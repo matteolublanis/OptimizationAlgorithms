@@ -1,0 +1,66 @@
+\section{Tabu Search}
+Nelle slide venivano proposte tre metaeuristiche: Simulated Annealing (SA, ricottura simulata), Tabu Search (TS), Genetic Algorithms (ispirati alla natura).
+Riporto una descrizione generale di SA data da MATLAB:
+\begin{quote}
+	Simulated annealing is a method for solving unconstrained and bound-constrained optimization problems. The method models the physical process of heating a material and then slowly lowering the temperature to decrease defects, thus minimizing the system energy.
+	
+	At each iteration of the simulated annealing algorithm, a new point is randomly generated. The distance of the new point from the current point, or the extent of the search, is based on a probability distribution with a scale proportional to the temperature. The algorithm accepts all new points that lower the objective, \textbf{but also, with a certain probability, points that raise the objective}. By accepting points that raise the objective, \textbf{the algorithm avoids being trapped in local minima, and is able to explore globally for more possible solutions}. An annealing schedule is selected to systematically decrease the temperature as the algorithm proceeds. As the temperature decreases, the algorithm reduces the extent of its search to converge to a minimum
+\end{quote}
+Questa definizione è utile soltanto per introdurre qualche concetto utile alla Tabu Search. 
+
+Diamo due definizioni:
+\begin{itemize}
+	\item \textbf{Mossa}: operazione eseguita per definire il vicinato di una data soluzione;
+	\item \textbf{Mossa tabù}: mossa proibita.
+\end{itemize}
+Evito di rieseguire/cancellare gli effetti di una mossa appena fatta rendendola tabù, questo per evitare di rimanere bloccati in ottimi locali. Le caratteristiche principali della TS sono:
+\begin{itemize}
+	\item Accettazione di mosse che deteriorano il valore della f.o;
+	\item Costruzione di una \textbf{lista tabù} che contiene tutte le mosse proibite (per evitare di ritornare in un minimo locale);
+	\item Utilizzo di due tipi di memorie: \textbf{Short Term Memory, Long Term Memory};
+	\item Due fasi: \textbf{Intensificazione} e \textbf{Diversificazione};
+	\item \textbf{Aspiration Criteria}: eventuali condizioni che permettono di eseguire una mossa tabù, questo per evitare restrizioni troppo forti.
+\end{itemize}
+La differenza tra i due tipi di memoria è fondamentale, in quanto entrambe hanno la loro specifica strategia: questo permette la modifica del vicinato $\mathcal{N}(x)$ della soluzione corrente $x$ e il vicinato modificato è il risultato di una storia selettiva degli stati incontrati durante il processo di ricerca (quella a breve termine ha una tabu list per definire elementi del vicinato esclusi da quello modificato, mentre in quella a lungo termine posso includere soluzioni che non appartengono al vicinato originale). TS è un metodo con vicinato dinamico.
+
+L'algoritmo base con sola Short Term Memory (STM, e l'altra LTM);
+\begin{enumerate}
+	\item Identifica una soluzione ammissibile $\tilde{x}$: imposta $x:=\tilde{x}$ (con $x$ soluzione attuale) e inizializza la Tabu List $TL:=\emptyset$;
+	\item Genera vicinato $\mathcal{N}(x)$;
+	\item Trova soluzione $y\in \mathcal{N}(x)$ tale che:
+	\begin{itemize}
+		\item $f(y)$ è minimo;
+		\item $y\neq x$;
+		\item la soluzione non mosse tabù.
+	\end{itemize}
+	\item Imposto $x:=y$;
+	\item Aggiorno TL mettendo la mossa che cambia $x$ in $y$;
+	\item Se non è soddisfatto il criterio di stop (n iterazioni massimo o da ultimo miglioramento, limite tempo), torna allo step 2 altrimenti stop.
+\end{enumerate}
+Le memorie tengono tracce delle soluzioni secondo:
+\begin{itemize}
+	\item Recency: STM più usata, tiene traccia delle soluzioni con attributi recentemente cambiati, usata per la Tabu List (\textbf{Tabu Tenure} per indicare per quante iterazioni una mossa rimane tabù);
+	\item Frequency;
+	\item Quality;
+	\item Influence: quanto una caratteristica specifica cambia non solo il valore della soluzione, ma anche la struttura stessa.
+\end{itemize}
+Si aggiungono anche \textbf{Aspiration Plus}, soglia per qualità affinché una soluzione venga tenuta, e \textbf{Elite list}, lista di soluzioni migliori incontrate durante il processo di ricerca.
+
+Da ricordarsi: la TS NECESSITA una soluzione iniziale dalla quale partire (solitamente ottenuta con un algoritmo greedy).
+
+La CEM (\textbf{Critical Event Memory}) è una strategia (non una memoria) che può essere usata per fermare il processo di ricerca e riniziare da una soluzione differente e anche proveddere diversificazione. Registra eventi critici, ad esempio trovare nuove soluzioni iniziali o una mossa che migliora la soluzione precedente.
+
+Abbiamo definito la tabu tenure come durata $j$ dello stato tabu-attivo per una mossa, un valore basso permette un'intensificazione, un valore alto permette la diversificazione (obbliga a spostarsi). Si usa un range di valori solitamente, non uno fisso, e può variare o in modo random (dopo $t_{max}$ iterazioni o ogni volta che un attributo viene aggiunto alla TL) o in modo sistematico (quando succede qualcosa).
+
+Una mossa ad alta influenza non per forza migliora la f.o, ma cambia la struttura della soluzione, permettendo di visitarne di nuove.
+
+Vediamo ora invece degli aspiration criteria:
+\begin{itemize}
+	\item Default: tutte mosse tabù, devo sceglierne una, quella meno tabù;
+	\item Obiettivo: seleziono mossa che trova soluzione migliore di quella visitata fino a quel momento;
+	\item Direzione di ricerca: un attributo può essere aggiunto/tolto da una soluzione se la direzione della ricerca non cambia;
+	\item Influenza: faccio mossa tabù poco influente se ne ho appena fatta una altamente influente.
+\end{itemize}
+
+Infine, la LTM tiene misura di \textbf{Transition}, quanto una caratteristica viene modificata nel tempo dall'algoritmo (più alto è più è probabile che la caratteristica non sia di importanza per la struttura della soluzione), e di \textbf{Residence}, quanto una caratteristica appare nelle soluzioni visitate dall'algoritmo (se compare tanto, o è perché la caratteristica è un buon candidato o perché serve diversificare).
+In questo caso, l'intensificazione usa lista di soluzioni d'elite, mentre la diversificazione sfrutta i dati salvati per fare dei cambiamenti alla struttura della soluzione.

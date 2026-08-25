@@ -1,0 +1,73 @@
+\section{Combinatorial Optimization}
+\paragraph{Problemi di ottimizzazione}
+Un problema di ottimizzazione prevede di trovare una soluzione $x$ tale per cui:
+\begin{equation}
+	\begin{aligned}
+		& \min \quad & f(x) & \\
+		\textrm{s. t} \quad & g_i(x)\ge 0 \quad & i=1\dots m\\
+		\quad & h_j(x)=0 \quad & j=1\dots p\\\quad
+		& x \ge 0
+	\end{aligned}
+\end{equation}
+dove $f$, $g_i$ e $h_j$ sono funzioni generiche in $x\in \mathcal{R}^n_+$.
+
+Possono essere espressi come problemi di \textbf{Programmazione Lineare Mista Intera}:
+\begin{equation}
+	\begin{aligned}
+		& \min \quad & c^tx+d^ty & \\
+		\textrm{s. t} \quad & Ax+By\ge b & \\
+		& x,y\ge 0 \quad & \\
+		& x intero
+	\end{aligned}
+\end{equation}
+dove A, B, c e d hanno solo valori interi. Se $x$ è solo intero, si parla di \textbf{Programmazione Lineare Intera ILP}, se invece è binario di \textbf{Programmazione Binaria Intera BIP}.
+
+Un problema di ottimizzazione combinatoria si differenzia dal modo con il quale va ad esplicitare il problema (la forma con la quale viene descritto), ma essa è ambivalente alla formulazione appena vista. Un problema di ottimizzazione combinatoria (COP) prevede di scegliere un sottoinsieme di elementi di un insieme finito discreto di oggetti tale da essere ottimo, ovvero, seguendo una funzione di ottimizzazione, il suo contenuto dia il risultato migliore.
+\textbf{Def. di min:} sia $N=\{1\dots n\}$ un insieme finito discreto e $\mathcal{F}$ una collezione di sottoinsiemi ammissibili di $\mathcal{N}$. Si associa ad ogni elemento $j\in \mathcal{N}$ un costo $c_j$: definiamo COP il problema di determinare il miglior sottoinsieme di $\mathcal{N}$ tale per cui si ha il costo minimo:
+\begin{equation}
+	\min={S\subseteq \mathcal{N}}\{\sum_{j\in S}c_j:S\in \mathcal{F}\}
+\end{equation}
+Un COP può essere formulato come BIP, ILP, MILP. Esempi di COP sono:
+\begin{itemize}
+	\item Problema dello zaino \begin{equation}\max_{I\subseteq N}\{\sum_{i\in I}v_i:\sum_{i\in I}w_i\le b\}\end{equation}
+	\item Set Partitioning \begin{equation}\min_{T\subseteq N}\{\sum_{j\in T}c_j:\bigcup_{j\in T}S_j=M\}\end{equation}
+	\item TSP: Problema commesso viaggiatore ($\pi$ è la permutazione ciclica, il viaggio, N da visitare) \begin{equation}\min_{\pi}\{\sum_{j=1}^nc_{j\pi(j)}:\pi \in T\}\end{equation}
+\end{itemize} 
+
+Consigli da seguire per formulaizone:
+\begin{itemize}
+	\item n e m (var e vincoli) piccoli: complessità polinomiale dipende da questi valori;
+	\item La formulazione è cruciale, ci si vuole avvicinare il più possibile al convex hull: più la formulazione è stringente meglio è (migliora efficienza nella risoluzione). Si definisce convex hull: \begin{equation}CH(X)\{\sum_{i=1}^k\lambda_ix^i|\sum_{i=1}^k\lambda_i=1, \lambda_i\ge 0, x^i \in X\}\end{equation}
+	per $X=\{x^1, x^2,...\}$. è un poliedro con soli estremi interi: se conoscessimo il CH il problema rilassato sarebbe identico al problema originale, ottenendo così un tempo risolutivo molto migliore. Trovare CH è difficile, si fan compromessi. Quando ci si avvicina al CH determina la qualità di una formulazione di un problema ($P_a\subset P_b$ equivale a dire che la prima formulazione è almeno forte quanto quella di B (può superarla)).
+\end{itemize}
+
+Dimostriamo ora che per ottenere il CH (o buona approssimazione) serve un numero esponenziali di vincoli, per farlo introduciamo l'\textbf{albero ricoprente minimo}: un grafo aciclico con $n-1$ lati (edges) e o non contiene cicli (formulazione A) o è connesso (formulazione B, tocca tutti i nodi dell'insieme).
+Formulazione A:
+\begin{equation}
+	\begin{aligned}
+		\min \sum_{e\in E}c_ex_e\\
+		\sum_{e\in E}x_e=n-1\\
+		\sum_{e\in E(S)}x_e\le |S|-1, S\subset N, S\neq \emptyset \\
+		x_e\in \{0,1\} \quad e\in E
+	\end{aligned}
+\end{equation}
+Formulazione B:
+\begin{equation}
+	\begin{aligned}
+		\min \sum_{e\in E}c_ex_e\\
+		\sum_{e\in E}x_e=n-1\\
+		\sum_{e\in \delta(S)}x_e\ge 1, S\subset N, S\neq \emptyset \\
+		x_e\in \{0,1\} \quad e\in E
+	\end{aligned}
+\end{equation}
+Cambia solo un vincolo: \textbf{Subtour Elimination Formulation} VS \textbf{Cutset Formulation}. 
+
+Si dimostra che:
+\begin{itemize}
+	\item $P_a\subset P_b$ e esistono esempi per cui l'inclusione è stretta;
+	\item $P_b$ può avere punti estremi frazionari.
+\end{itemize}
+Primo punto: per ogni S, E è dato dall'unione di $E(S), \delta (S), E(N\backslash S)$, che è la sommatoria di tutti gli $x_e$ relativi per insieme, per ogni $x$ in $P_A$ vale il SEC e quindi $\sum_{e\in E(S)}x_e\le |S|-1$ e $\sum_{e\in E(S)}x_e\le |N\backslash S|-1$ in quanto vale che la sommatoria di $x_e$ deve essere $n-1$, quindi otteniamo $\sum_{e\in E(S)}x_e\ge 1$ dimostrando il primo punto.\\
+Secondo punto: soluzione costruita ad hoc per dimostrarlo, $P_A$ è il CH.
+
+Per il problema del perfect matching, la formulazione B diventa migliore.

@@ -1,0 +1,44 @@
+\section{Local Search Methods}
+\subsection{Euristiche}
+L'obiettivo degli algoritmi euristici è quello di trovare buone soluzioni in tempi irrisori rispetto a quelli che sarebbero necessari usando metodi esatti: richiede tempi polinomiali e fa da compromesso. Un'euristica trova un \textbf{limite superiore} per un problema di minimo (inferiore se di massimo), mentre la soluzione del problema rilassato trova un \textbf{limite inferiore} (e viceversa per il max).
+
+Due tipi di euristiche:
+\begin{itemize}
+	\item \textbf{Costruttive}: inizio da soluzione vuota e costruisco iterativamente;
+	\item \textbf{Distruttive}: inizio da soluzione ammissibile e inizio a smantellarla per trovare miglioramenti fin quando non ho più mosse.
+\end{itemize}
+
+La differenza è importante in quanto le distruttive richiedono, appunto, una soluzione iniziale, la quale non sempre è facile da ottenere.
+
+Un esempio di euristica costruttiva viene riportata per il TSP:
+\begin{enumerate}
+	\item Scegli un vertice da quale partire e considera il self-loop come soluzione iniziale S.
+	\item Espandi S aggiungendo uno ad uno i rimanenti vertici fino ad ottenere un ciclo hamiltoniano (percorso chiuso che tocca ogni nodo e torna al punto di partenza).
+	
+	Questa procedura si divide in due fasi:
+	\begin{enumerate}
+		\item Seleziona vertice k, non incluso in S, secondo un certo \textbf{criterio}: nearest neighbor (nodo più vicino), farthest insertion (nodo più lontano), arbitrary insertion, cheapest insertion (costo minimo di inserimento).
+		\item Inserisci il vertice k in S, tra due vertici u e v: solitamente si vuole minimizzare il costo d'inserimento ($d_{i,j}=c_{i,k}+c_{k,j}-c_{i,j}$ e voglio $d_{u,v}\le d_{i,j} \forall (i,j)\in S$).
+	\end{enumerate}
+\end{enumerate}
+Gli algoritmi \textbf{greedy} (o ingordi) sono algoritmi che si basano sulla scelta ottimale basata soltanto sulle informazioni che si hanno ad ogni step: gli algoritmi greedy possono essere definiti ciechi da questo punto di vista, però sono spesso molto veloci e trovano soluzioni necessari per altri algoritmi (come le metaeuristiche). Esempio greedy per il problema dello zaino, è quello di ordinare gli item secondo un rapporto profitto/peso e poi prendere i primi della lista: l'algoritmo può funzionare bene, fin quando non troviamo un caso edge (\href{https://cs.stackexchange.com/questions/41381/knapsack-greedy-approximation-worst-case}{esempio}).
+
+Abbiamo poi due modi di verificare la qualità di un algoritmo: sperimentalmente o studiandone il caso peggiore.
+
+Un altro esempio di algoritmo greedy proposto è quello di nearest neighbor per un problema di TSP: inizio da soluzione vuota, scelgo un nodo, ad ogni iterazione includo nella soluzione parziale il nodo più vicino al nodo attuale sul quale mi trovo, se la soluzione parziale include tutti i nodi allora la soluzione è stata trovata altrimenti continuo a inserire. Questo algoritmo ha tempi polinomiali legati al numero di nodi presenti nell'insieme, però nel caso peggiore può dare una soluzione disastrosa. Esempio in questo caso:
+\begin{center}
+	\includegraphics[width=5cm]{tabellacasopeggiore}
+\end{center}
+dove indipendentemente da dove scelgo il nodo iniziale la soluzione dipenderà sempre da M (se $M \le 3$ tutto ok, con $M > 3$ la soluzione che troverà l'algoritmo greedy sarà $\frac{5+M}{8}$ e va all'infinito seguendo M).
+\subsection{Algoritmi di Ricerca Locale}
+\textbf{Neighborhood}: Dato un problema di ottimizzazione $P=(f,S)$ ove $S$ è l'insieme di tutte le soluzioni ammissibili per P e $f:S\rightarrow R$ funzione obiettivo, si definisce neighborhood $N:S\rightarrowtail 2^{|S|}$ tale che $\forall i \in S$ definisca $N(i)\subseteq S$ l'insieme di tutte le soluzioni vicine ad $i$: gli algoritmi di local search cercano di migliorare la soluzione esplorando uno dei neighborhood della soluzione. Su questa definizione si basa tutto il prossimo discorso.
+
+Due algoritmi iterativi migliorativi:
+\begin{itemize}
+	\item First Improvement: analizzo vicinati, in ordine random, tengo poi prima soluzione che migliora la f.o; converge a ottimo locale;
+	\item Best Improvement: analizzo tutti neighborhood, tengo la soluzione migliore ("steepest descent method" metodo di discesa più ripida), molto più lento ($O(|N(s)|)$ ove $|N(s)|$ è la cardinalità del vicinato).
+\end{itemize}
+
+Gli algoritmi di ricerca locale sono flessibili e applicabili un po' sempre, ma finiscono in ottimi locali purtroppo: per risolvere si usano le metaeuristiche, che implementano metodi per sfuggire agli ottimi locali. Richiedono anche un valutatore di soluzione (f.o), check di ammissibilità per soluzione, funzione di vicinato, tecnica di esplorazione del vicinato efficiente.
+
+\textbf{m-opt}: m archi vengono rimossi nella soluzione del TSP ($G(V,e),c,min)$), poi le strade vengono ricollegate con ancora m archi (2-opt migliore).

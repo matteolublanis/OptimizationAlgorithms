@@ -238,4 +238,164 @@ sorting=ynt
 	\newpage
 	
 	\section{Kernel Search}
+	L'obiettivo è quello di sviluppare un framework euristico per ottenere soluzioni di alta qualità a problemi MIP generali in un tempo ragionevole. Metodi:
+	\begin{itemize}
+		\item Metodi esatti
+		\item Euristiche costruttive (greedy)
+		\item Metodi di ricerca locale (discesa ripida/ascesa)
+		\item Metodi di Metaeuristiche
+		\item Matheuristics: ibridazione di euristiche e tecniche di metodi esatti
+	\end{itemize}
+	Abbiamo visto che i metodi di ricerca locale si bloccano dopo un po' in ottimi locali: necessario avere \textbf{diversificazione/intensificazione}$\rightarrow$ le metaeuristiche vanno a risolvere questo, sono dei framework di alto livello indipendenti dal problema che danno una serie di guide linea o strategie per sviluppare algoritmi di ottimizzazione euristica. Il problema di queste metaeuristiche è che vengono adattate a problemi specifici, poi non possono essere usate così come sono state fatte: vogliamo quindi combinare la forza dei metodi esatti con la forza delle euristiche, introduciamo le matheuristics.
+	\subsection{\textbf{Matheuristics}}
+	Le matheuristics combinano algoritmi di programmazione matematica esatti con le metaeuristiche in maniera cooperativa. I principali approcci sono stati:
+	\subsubsection*{Local Branching}
+	Data una soluzione ammissibile $\bar{x}$, si definisce un vicinato $k-opt$ di $\bar{x}$ come:
+	\begin{center}
+		\begin{equation*}
+			\Delta (x,\bar{x}) := \sum_{j\in \mathcal{B}: \bar{x_j}=1}(1-x_j)+\sum_{j\in \mathcal{B}: \bar{x_j}=0}x_j\le k
+		\end{equation*}
+	\end{center}
+	inserito con un branch and bound. Favorisce aggiornamenti precoci della soluzione ed è progettato per migliorare il comportamento euristico del solver MIP. L'equazione ci dice che prendiamo soluzioni che cambiano solo per k componenti (considera sia ciò che portato a 0, prima parte, che portato a 1, seconda parte).
+	\subsubsection*{Relaxation Induced Neighborhood Search (RINS)}
+	Ad ogni nodo dell'albero di branch and bound ho:
+	\begin{itemize}
+		\item $\bar{x}$: la soluzione intera incombente (la migliore trovata fin'ora);
+		\item $x^{LP}$: la soluzione ottimale del problema rilassato.
+	\end{itemize}
+	L'algoritmo RINS:
+	\begin{itemize}
+		\item Fissa tutte le variabili che hanno lo stesso valore in $\bar{x}$ e $x^{LP}$;
+		\item Aggiunge un vincolo di cut off $c^Tx\le c^T\bar{x}-\theta$ (forza a cercare soltanto soluzioni migliori di quella trovata);
+		\item Risolve un problema MIP ristretto sulle restanti variabili
+	\end{itemize}
+	Da decidere ogni quanti k nodi farlo andare e un limite di nodi per il problema MIP ristretto.
+	\subsubsection*{Ricerca di prossimità}
+	Ripeti fino al limite di tempo (MIN):
+	\begin{enumerate}
+		\item Aggiungi vincolo di cutoff $c^Tx\le c^T\bar{x}-\theta$, ove $\bar{x}$ è una soluzione ammissibile e $\theta > 0$ la tolleranza di cutoff
+		\item Rimpiazza la funzione obiettivo con una di prossimità:
+		\begin{equation*}
+			\Delta (x,\bar{x}) := \sum_{j\in \mathcal{B}: \bar{x_j}=1}(1-x_j)+\sum_{j\in \mathcal{B}: \bar{x_j}=0}x_j\le k
+		\end{equation*}
+		\item Risolvi il nuovo problema (non per forza a ottimo) utilizzando un solver MIP e ottieni una nuova soluzione incombente $x^*$ (possibilmente vuota)
+		\item Ricentra $\Delta (x,\cdot)$ impostanto $\bar{x} := x^*$, e/o aggiorna $\Theta$
+	\end{enumerate}
+	Local Branching e Proximity Search si differenziano per come impostano vincoli e f.o:
+	\begin{itemize}
+		\item Local Branching cerca nel vicinato definito la soluzione ammissibile che migliora il più possibile la funzione obiettivo;
+		\item Proximity Search invece impone di trovare una soluzione che migliori f.o di almeno $\Theta$ e poi, tra tutte le soluzioni trovate, prendere quella più vicina a $\bar{x}$, rendendo la f.o più "facile" (distanza di Hamming) e velocizzando la ricerca di una nuova soluzione ammissibile.
+	\end{itemize}
+	\subsection{Kernel Search}
+	Risolvendo i problemi MIP si osserva che ci sono poche variabili non a zero, le variabili in base del LP sono buoni predittori della soluzione ottimale MIP, costi ridotti fan da buoni predittori per variabili in base o no.
+	
+	Si definisce \textbf{kernel set} l'insieme di variabili promettenti che potrebbero essere non zero in una soluzione ottimale. Con questo posso costruire un problema MIP ristretto e provare a risolverlo per vedere cosa ne esce fuori. Mischio così il lavoro, metà framework euristico metà risolto da un solver MIP. 
+	
+	Abbiamo così un framework semplice da implementare, in cui affido il lavoro sporco al solver MIP e col quale posso fare un trade off tra qualità e efficienza facendo tuning di parametri. 
+	
+	2 fasi:
+	\begin{enumerate}
+		\item Inizializzazione: inizio risolvendo il rilassato e ordinando le variabili secondo un criterio di ordine, costruisco il kernel set iniziale $\Lambda$ e partiziono le seguenti variabili in sequenza ${B_i|i=1,\dots, nb}$ di bucket (costruzione dei bucket), risolvo poi il problema ristretto $MIP(\Lambda)$ e ottengo la soluzione ottimale $x^*$ con valore $w^*$. Quindi:
+		\begin{enumerate}
+			\item Risolvo LP rilassato:
+			\begin{equation*}
+				\begin{aligned}
+					\max c^Tx \\
+					Ax=b \\
+					x\ge 0
+				\end{aligned}
+			\end{equation*}
+			Con soluzione ottimale $x=(x_B,x_N)$
+			\item Prendo il valore delle variabili in base $x_b=B^{-1}b$
+			\item Prendo valore dei costi ridotti (fuori dalla base): $c_N^T-c_B^TB^{-1}N$: se 0 han costo ridotto minore di 0 (se porto a 1 peggiora), se 1 storia inversa.
+		\end{enumerate}
+		Si ordinano poi le variabili per costruire successivamente il kernel set, le ordino secondo valore non incrementale delle variabili nella soluzione LP rilassato e non decrementale del valore assoluto dei costi ridotti:
+		\begin{equation*}
+			c^Tx=c_B^T(B^{-1}b-B^{-1}Nx_N)+c_N^{T}x_N=c_B^TB^{-1}b+(c_N^T-c_B^TB^{-1}N)x_N
+		\end{equation*}
+		Per costruire il kernel set $\Lambda$, semplicemente scelgo le prime $C$ variabili ($C$ è il numero di variabili con valore positivo in LP). Una volta fatto, risolvo il MIP ristretto al Kernel Set con un solver e ottengo una soluzione ottimale $x^*$ e il suo valore ottimale $w^*$. 
+		
+		Le altre variabili le partiziono in bucket, qui è da decidere come.
+		
+		\item Miglioramento: procedimento semplice, risolvo il problema $MIP(\Lambda \cup B_i)$ ristretto (vado in ordine dal primo) e se risolvibile aggiorno la soluzione incombente e aggiorno il kernel set con le nuove variabili selezionate in $B_i$, poi se $i<nb$ incremento i e ripeto, altrimenti fermo. Obiettivo è trovare valore migliore di $w^*$ e che almeno una variabile in $B_i$ sia selezionata (trovare nuove variabili da mettere nel kernel set). 
+		
+		Importante da notare: NESSUNA VARIABILE VIENE SCARTATA, aumentano soltanto, qui ritorna però il problema della costruzione dei bucket (cardinalità, quantità, dimensione, variabili in comune, visitabili più volte):
+		\begin{itemize}
+			\item Cardinalità: più bassa più è efficiente ma aumenta nb e diminuisce l'efficacia, contrario per più alta;
+			\item Quantità (nb, number of buckets): un solo bucket è facilissimo da ordinare, molti di meno (un solo bucket però può essere inutile);
+			\item Dimensione: fissa o variabile, dipende dal contesto, di sicuro è più facile gestire bucket con dimensioni fisse;
+			\item Variabili in comune: può essere d'aiuto averle per questioni di affinità tra i bucket;
+			\item Visitabili più volte: \textbf{Iterative Kernel Search}, si svolge fase 1 e 2 come prima, poi $nb:=q-1$ dove $q:=max\{i|\bar{\Lambda_i} \neq \emptyset \}$, richiamo la fase 2 e se una nuova variabile entra nel kernel set rimetto $nb$ al valore iniziale, chiamo fase 2 e rifaccio poi quanto detto.
+		\end{itemize}
+	\end{enumerate}
+	\newpage
+	\section{Kernel Search: Applicazioni}
+	\subsection{Multidimensional Knapsack Problem}
+	\begin{equation}
+		\begin{aligned}
+			\max \quad & \sum_{j=1}^np_jx_j & \\
+			s.t \quad & \sum_{j=1}^nw_{ij}^kx_j\le c_i \quad & i=1,\dots, m\\
+			& x_j\in \{0,1\} \quad & j=1,\dots , n
+		\end{aligned}
+	\end{equation}
+	Problema puramente binario, NP-Hard forte, molti benchmark disponibili. Si settano:
+	\begin{itemize}
+		\item Criterio di sorting (valori variabili in soluzione LP e costi ridotti);
+		\item Inizializzazione Kernel Set (C);
+		\item Numero e struttura dei bucket (solo dim. fisse e bucket disgiunti);
+		\item Solo variante iterativa;
+		\item Tempo limite prefissato per ogni problema MILP.
+	\end{itemize}
+	Risolvendolo, si è notato che:
+	\begin{itemize}
+		\item Costi ridotti danno buoni segnali a identificare variabili promettenti;
+		\item Bucket più larghi danno soluzioni di qualità migliore ma tempi allungati;
+		\item Problemi complessi richiedono uso di IKS.
+	\end{itemize}
+	\newpage
+	\subsection{Portfolio Selection Problem with CVaR}
+	Voglio massimizzare il valore condizionale a rischio che è soggetto a: ritorno netto del portfolio (costi fissi e proporzionali), vincoli sul capitale, vincoli sulla cardinalità (securities scelte), vincoli sui limiti di soglia. è un problema lineare misto intero binario ed è NP-Hard. Riporto l'immagine del modello:
+	\begin{center}
+		\includegraphics[width=13cm]{portfolio}
+	\end{center}
+	Ove:
+	\begin{itemize}
+		\item $x_j\in \mathcal{Z}^+$ è il numero di lotti acquistati dell'asset $j$;
+		\item $z_j\in \{0,1\}$ è una variabile binaria che indica se un asset $j$ viene inserito o meno nel portfolio;
+		\item $y\in \mathcal{R}$ rappresenta il \textbf{Valore a Rischio} al livello di confidenza $1-\beta$;
+		\item $d_t\ge 0$ è una variabile ausiliaria che misura la deviazione negativa rispetto al periodo temporale $t$
+		\item $q_j, c_j, f_j$ sono prezzo dell'asset $j$, costo di transazione proporzionale per quota e costo di transazione fisso per l'attivazione di $j$;
+		\item $r_{jt}, r_j$ i rendimenti dell'asset $j$ nel periodo temporale $t$ (valore atteso è $r_j$);
+		\item $p_t$ probabilità dello scenario $t$
+	\end{itemize}
+	Mentre:
+	\begin{itemize}
+		\item La f.o rappresenta la linearizzazione della massimizzazione del CVaR, che massimizzo per così minimizzare le perdite estreme del caso peggiore: voglio l'outcome migliore nel caso peggiore, perché nel caso migliore tutti vincono;
+		\item La 12 calcola la deviazione $d_t$ per il periodo $t$; in quanto $d_t$ è maggiore di 0, se il rendimento netto nel periodo $t$ è maggiore di $y$, $d_t$ va a 0, se invece va sotto $y$, $d_t$ cattura esattamente la perdita oltre il VaR;
+		\item La 13 impone che il rendimento totale atteso netto (considerati rendimenti medi, costi proporzionali e fissi) sia maggiore o uguale a una soglia di rendimento target $\mu_0$ applicata al capitale totale investito;
+		\item La 14 vincola il capitale investito a stare in un intervallo target, questo è importante in quanto quasi mai si dice un numero preciso da investire, ma un intervallo, dovuto alla quantità non precisamente intera degli asset che acquisto;
+		\item La 15 limita il numero massimo di asset diversi da includere nel portfolio;
+		\item La 16 impone limiti sul numero massimo di quote acquistabili per asset $j$.
+	\end{itemize}
+	Qua si è notato che rilassato LP dà buoni segnali per identificare set ottimale di variabili, selezionare set di variabili corretto è una task critica, costi ridotti sono un buon criterio di ordinamento, stesso discorso di prima per bucket più larghi, buon criterio di sorting sul basic kernel search dà risultati simili all'IKS.
+	
+	Ad oggi vi sono nuove varianti che vanno incontro a eventuali problematiche non risolvibili con i due metodi base che abbiamo visto.
+	
+	\newpage
+	\section{Tabu Search}
+	
+	\newpage
+	\section{Variable Neighborhood Search}
+	\newpage
+	\section{Adaptive Large Neighborhood Search}
+	\newpage
+	\section{GRASP}
+	\newpage
+	\section{Algoritmi Esatti}
+	\newpage
+	\section{Branch\&Cut per TSP}
+	\newpage
+	\section{Algoritmi d'approssimazione}
+	\newpage
+	\section{Problemi di routing degli archi (Arc Routing, ARP)}
 \end{document}

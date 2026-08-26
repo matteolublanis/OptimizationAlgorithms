@@ -1,1 +1,74 @@
 \section{Variable Neighborhood Search}
+Vedremo diversi tipi di VNS, ma tutti condividono queste caratteristiche:
+\begin{itemize}
+	\item Set di strutture di vicinati: $\mathcal{N}_k(k=1,\dots,k_max)$;
+	\item Cambiamento sistematico di vicinato durante la ricerca;
+	\item Esplorazione di vicinati sempre crescenti e sempre più lontani dalla soluzione corrente;
+	\item Muovo a nuova soluzione solo se miglioro quella incombente;
+	\item Utilizzo di ricerca locale per trovare ottimo locale all'interno dei vicinati generati.
+\end{itemize}
+\subsection{Variable Neighborhood Search - VNS}
+Due fasi:
+\begin{itemize}
+	\item \textbf{Inizializzazione}: definisco $\mathcal{N}_k(k=1,\dots,k_max)$, trovo soluzione iniziale ammissibile $x$ e decido regola di stop (tempo CPU, n iterazioni, n iterazioni da ultimo miglioramento).
+	\item \textbf{Loop principale}: da ripetere fino alla stopping rule:
+	\begin{enumerate}
+		\item $k\leftarrow 1$
+		\item Fino a che  $k=k_{max}$ ripetere:
+		\begin{enumerate}
+			\item \textbf{Shaking} (scossa): scegli a random (evita cicli) $x'$ nel vicinato $k$-esimo di $x$ ($x'\in \mathcal{N}_k(x)$);
+			\item \textbf{Local search} (ricerca locale): trova ottimo locale $x''$ iniziando da $x'$ sfruttando un metodo di ricerca locale;
+			\item \textbf{Move or not} (muovo o no): se l'ottimo locale è migliore dell'incumbent allora sposto $x$ in $x''$ e rinizio da $\mathcal{N}_1(x)$, altrimenti $k\leftarrow k+1$
+		\end{enumerate}
+	\end{enumerate}
+\end{itemize}
+è un metodo di discesa random che sfrutta il first improvement, vicinati successivi possono essere annidati tra loro.
+
+Può essere applicato \textbf{Descent-ascent}, ovvero mi sposto con probabilità data in $x''$ nel caso in cui sia peggiore dell'incumbent. Altro miglioramento è \textbf{Best Improvement}, ovvero quello di scegliere di spostarsi nel vicinato migliore tra tutti quelli visitati (anche scegliere in $2a$ la soluzione random migliore può essere un'idea). Infine, incrementare in maniera non fissa $k$ (usando $k_{min}$ o $k_{step}$) può aiutare per la diversificazione (valori alti) o intensificazione (valori più bassi).
+
+
+\subsection{Variable Neighborhood Descent - VND}
+Due fasi:
+\begin{itemize}
+	\item \textbf{Inizializzazione}: definisco $\mathcal{N}_k(k=1,\dots,k_max)$, trovo soluzione iniziale ammissibile $x$.
+	\item \textbf{Loop principale}: da ripetere fino alla stopping rule:
+	\begin{enumerate}
+		\item $k\leftarrow 1$
+		\item Fino a quando non trovo più miglioramenti ripeti:
+		\begin{enumerate}
+			\item \textbf{Neighborhood Exploration} (esplorazione vicinato): trovo la soluzione migliore $x'$ nel vicinato $k$-esimo di $x$ ($x'\in \mathcal{N}_k(x)$);
+			\item \textbf{Move or not} (muovo o no): se $x'$ è migliore di $x$, allora $x\leftarrow x'$ e $k\leftarrow 1$, altrimenti $k\leftarrow k+1$
+		\end{enumerate}
+	\end{enumerate}
+\end{itemize}
+
+\subsection{Come implementarlo}
+Rimangono ancora molte domande riguardo vicinati e parametri, come posso implementare questo algoritmo? 
+
+Viene proposto un esempio pratico sul problema del TSP: si definisce lo spazio delle soluzioni $\mathcal{S}$, ovvero il set di tutte le permutazioni per gli $n$ clienti del venditore viaggiatore, $\rho$ come la distanza tra soluzioni per il TSP ed è la cardinalità della loro differenza simmetrica ($k$ lati per cui si differenziano, $\rho$ è metrica in $\mathcal{S}$), il vicinato indotto da $\rho$ è il $k$-OPT ($\mathcal{N}_k(x)=\{x'|\rho(x,x')=k,x\in \mathcal{S}\},k=2,\dots,n)$).
+Due versioni:
+\begin{itemize}
+	\item VNS-1: vicinati sono $k$-OPT con $k_{max}=n$, si usa 2-OPT per ricerca locale ($O(n^2)$);
+	\item VNS-2: stessi vicinati di prima, come ricerca locale si usa 2-OPT sul grafo  ottenuto eliminando i $r\%$ nodi più lontani da ogni cliente (leggermente migliore del primo).
+\end{itemize}
+GENIUS è un algoritmo basato su procedure che elimina/inserisce nodi, solo i $p$ nodi più vicini a quello considerato per eliminazione/inserimento sono tenuti in considerazione.
+
+\subsection{Varianti per problemi più grandi}
+VNS diventa pesante per problemi di larga dimensione, si propongo tre varianti:
+\begin{itemize}
+	\item \textbf{Reduced VNS}: migliora efficienza peggiora efficacia, elimina fase di ricerca locale e le soluzioni vengono generate a random nei vicinati che sono sempre più distanti dalla soluzione incombente (buono per trovare soluzioni buone velocemente, ma manca l'ottimo più vicino al globale);
+	\item \textbf{Variable Neighborhood Decomposition Search}: unisce VNS con un metodo di decomposizione, durante la ricerca locale tutti gli attributi di una soluzioni sono settati ad un valore dato tranne $k$, il problema $k$ dimensionale viene risolto nello spazio delle variabili non fissate e posso usare VNS base come metodo di ricerca locale; stessa inizializzazione di VNS base, loop quasi come VNS base ma cambia shaking (sia $y$ un set di attributi di $x'$ ma non di $x$) e local search (trova ottimo locale in spazio delle soluzioni di $y$, sia $y'$ tale ottimo locale e $x''$ la soluzione corrispondente in tutto lo spazio, ove $x''=(x'\backslash y)\cup y')$);
+	\item \textbf{Skewed VNS}: analizza topologia dell'ottimo locale con obiettivo di trovare solutioni di buona qualità lontane da quella incombente, si usa una \textit{valutation function} che sostituisce la f.o che tiene in considerazione $\rho(x,x')$ della soluzione corrente $x'$ da quella incombente $x$:
+	\begin{enumerate}
+		\item Inizializzazione: definisci $\mathcal{N}_k(x)$, trova soluzione iniziale ammissibile $x$, imposta $x_{opt}\leftarrow x, f_{opt}\leftarrow f(x)$, decidi regola stop, setta $\alpha$;
+		\item Loop principale: 
+		\begin{enumerate}
+			\item \textbf{Shaking} (scossa): scegli a random (evita cicli) $x'$ nel vicinato $k$-esimo di $x$ ($x'\in \mathcal{N}_k(x)$);
+			\item \textbf{Local search} (ricerca locale): trova ottimo locale $x''$ iniziando da $x'$ sfruttando un metodo di ricerca locale;
+			\item \textbf{Improve or not} (migliora o no): se $f(x'')<f_{opt}$ imposta $f_{opt}\leftarrow f(x'')$ e $x_{opt}\leftarrow x''$;
+			\item \textbf{Move or not} (muovo o no): se $f(x'')-\alpha \rho (x,x'')<f(x)$ imposta $x\leftarrow x''$ e  $k\leftarrow 1$, altrimenti $k\leftarrow k+1$
+		\end{enumerate}
+	\end{enumerate}
+\end{itemize}
+
+Si conclude notando come VNS sia semplice e applicabile in molti campi, efficiente ed efficace. 

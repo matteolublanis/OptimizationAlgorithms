@@ -1,1 +1,69 @@
-\section{GRASP}
+\section{GRASP - Greedy Randomized Adaptive Search Procedure}
+Tre classificazioni: M/N/1 (memory less, neighborhood, 1). Introdotto nell'89.
+
+è una metaeuristica \textbf{multi-start} e \textbf{iterativa}, nella quale ad ogni iterazione do una soluzione al problema in mano. Si tiene infine, ovviamente, la soluzione migliore trovata. Due fasi:
+\begin{enumerate}
+	\item Fase 1: algoritmo greedy random adattivo per costruire una soluzione ammissibile;
+	\item Fase 2: miglioro usando algoritmo di ricerca locale.
+\end{enumerate}
+Come negli altri, smetto quando soddisfo la \textbf{stopping rule} (n iterazioni, tempo passato, parametri significativi). Il loop continua sulle due fasi finché non ho stopping rule.
+
+Pseudocodice:
+\begin{center}
+	\includegraphics[width=13cm]{grasppseudocode}
+\end{center}
+
+\subsection{Fase 1}
+Devo costruire una soluzione di buona qualità con un algoritmo: greedy (cerco sempre di migliorare f.o), random (o probabilistico, evita cicli), adattivo (tiene conto di quanto già scelto).
+
+\subsubsection*{Greedy}
+Un algoritmo greedy fa sempre una scelta localmente ottima con la speranza che quella scelta possa portare ad un ottimo globale. Gli item al di fuori della soluzione corrente vengono \textbf{ordinati} secondo una funzione di \textbf{rank}:
+\begin{equation*}
+	\theta : Items\rightarrow \mathbb{R}
+\end{equation*}
+Pseudocode:
+\begin{center}
+	\includegraphics[width=13cm]{graspgreedy}
+\end{center}
+Esempio sul problema di set covering: scegliere set con costi per fabbrica inferiori (se problema ha certo setting, trovo una soluzione orrenda).
+
+\subsubsection*{Adattivo}
+La funzione di rank che guida l'algoritmo greedy deve dipendere dall'elemento selezionato fino a quel punto nella soluzione $S$ che sta costruendo l'algoritmo greedy:
+\begin{equation*}
+	\theta_S:items\rightarrow \mathbb{R}
+\end{equation*}
+La costruzione è chiamata dinamica, in contrasto con l'approccio statico che assegna un punteggio agli elementi prima della costruzione.
+
+Pseudocode:
+\begin{center}
+	\includegraphics[width=12cm]{graspadaptive}
+\end{center}
+Questa procedura è più complessa e costosa, ma produce soluzioni nettamente migliori rispetto al basic greedy: esempio di prima del set covering, se ora seleziono set che già coprono altri set tali altri set hanno ora costo infinito ($U_j\backslash C_S=\emptyset$). Quindi, l'adattivo va a CAMBIARE la funzione di rank.
+
+\subsubsection*{Random}
+Questo per evitare cicli come già detto, in quanto un algoritmo puramente greedy ritornerebbe sempre la stessa soluzione. Si ha una variante dove usando la \textbf{Restricted Candidate List (RCL)}, ovvero un sottoinsieme di buoni candidati da aggiungere, si scelgono i prossimi elementi da aggiungere. Ci sono diverse strategie per costruire la RCL:
+\begin{itemize}
+	\item Considero solo elementi che migliorano la f.o, uso $\alpha$ per indicare quanto random (0 solo greedy, $+\inf$ puramente random);
+	\item Considero solo $\beta$ migliori elementi (stesso discorso per valore $\beta$ di $\alpha$);
+	\item Considero al massimo i migliori $\gamma$ elementi (1 puramente greedy, $n$ puramente random).
+\end{itemize}
+Poi per gli elementi posso assegnare probabilità uniforme o pesata, decido io. Pseudocode:
+\begin{center}
+	\includegraphics[width=13cm]{grasprandom}
+\end{center}
+
+Quindi, infine, per la fase 1 ho il seguente pseudocodice:
+\begin{center}
+	\includegraphics[width=13cm]{grasphase1}
+\end{center}
+
+\subsection{Fase 2}
+Miglioro soluzione $S$ trovata con la fase 1, sfruttando una local search in un vicinato $\mathcal{N}(S)$, la cui definizione dipende dal problema.
+\begin{center}
+	\includegraphics[width=13cm]{grasphase2}
+\end{center}
+
+\subsection{Ulteriori considerazioni}
+è parallelizzabile: molti processi runnano processo GRASP e danno soluzione, poi decido la migliore; ma può essere ancor di più migliorato condividendo le informazioni tra i vari processi (molto complicato).
+
+Quindi: framework semplice ed efficace, poco da settare, parallelizzabile, ma potrebbe bloccarsi in ottimi locali e difficilmente uscirne.

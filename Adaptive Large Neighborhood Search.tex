@@ -1,1 +1,51 @@
 \section{Adaptive Large Neighborhood Search}
+La dimensione del vicinato aumenta esponenzialmente in relazione alla dimensione del problema: questo li rende troppo larghi da esplorare. Le mosse tradizionali obsolete in termini di efficacia e diversificazione, mentre un vicinato su larga scala può portare miglioramenti nella soluzione, seppure ad un costo computazionale maggiore.
+
+\subsection{Large Neighborhood Search}
+Il \textbf{Large Neighborhood Search (LNS)} venne introdotto nel 1997 da Shaw e presenta due caratteristiche principali: \textbf{euristica di rimozione (destroy)} (data soluzione e numero $q$ produce nuova soluzione dove rimuove $q$ elementi) e \textbf{euristica di inserimento (repair)} (inserisce $q$ elementi nella soluzione prodotta dal destroy, generandone una nuova ammissibile). Lo pseudocodice è riportato:
+\begin{center}
+	\includegraphics[width=10cm]{pseudocodelns}
+\end{center}
+$q$ rappresenta la dimensione del vicinato, più piccolo è più intensifica e si concentra su ottimi locali (0 indica nessuna mossa applicata), più è grande più diversifica e riottimizza ($n$ risolve da capo il problema). $q$ deve essere gestito, è dinamico e aumenta/diminuisce in base all'iterazione.
+
+LNS alterna tra soluzioni non ammissibili (potenzialmente) e ammissibili: questo per via del metodo di rimozione; questo fa sì che l'ammissibilità non sia una condizione forte per la risoluzione (viene scartata al massimo e può essere nel caso penalizzata).
+
+Può anche essere interpretato come \textbf{fisso} (fisso alcuni componenti, rimozione) e \textbf{ottimizzo} (tengo fissati i componenti di prima e ottimizzo, inserimento).
+
+\subsection{Adaptive Large Neighborhood Search - ALNS}
+LNS usa solo un paio di euristiche di rimozione/inserimento, ALNS un set intero e ad ogni iterazione ne sceglie un paio differente $\rightarrow$ \textit{criterio di selezione} e \textit{sistema di valutazione}. Lo pseudocodice è riportato:
+\begin{center}
+	\includegraphics[width=13cm]{pseudocodealns}
+\end{center}
+Euristiche di rimozione:
+\begin{itemize}
+	\item \textbf{Shaw}: componente random viene rimosso dalla soluzione corrente e, seguendo una misura di parentela (similitudine tra componenti e quello selezionato), vengono rimossi i $q-1$ componenti con la misura di parentela più alta;
+	\item \textbf{Worst removal}: rimossi i $q$ peggiori componenti in termini di costo (da ordinare i componenti, specificare possibilità di rimozione $p$ per ogni componente, $p$ fondamentale per randomizzazione);
+	\item \textbf{Random Removal}: $q$ componenti rimossi a random.
+\end{itemize}
+Euristiche di inserimento:
+\begin{itemize}
+	\item \textbf{Basic Greedy}: inserisco $q$ componenti che producono costo minore;
+	\item \textbf{Regret}: considera differenza in termini di costi tra inserire nodo nel route migliore e inserirlo in quello di un altro (si usa $\Delta f_i^k$ per definire il costo di inserimento nodo $i$ nel suo $k$-esimo miglior route, si fa la differenza con quello nel quale voglio inserirlo e scelgo quello con valore massimo, $j=arg\quad \max_{i\in \{1,\dots,n\}}(\sum_{h=2}^k\Delta f_i^k-\Delta f_i^1)$);
+	\item \textbf{Exact Insertion}: componenti non rimossi da rimozione sono fissati al valore che hanno nella soluzione corrente e si usa un MILP solver per risolvere il sottoproblema generato (possibile aggiungere altri vincoli come upper/lower bound sui cambiamenti).
+\end{itemize}
+
+Per la selezione dell'euristica, la probabilità non è equa per tutte (a meno che non lo decida io), ad ogni euristica $j$ si associa un peso $\rho_j^-$ e si fa $\frac{\rho_j^-}{\sum_{i=1}^k\rho_i^-}$; rimozione e inserimento sono scelte INDIPENDENTI tra loro.
+
+Per l'aggiornamento dei pesi, il processo risolutivo viene diviso in segmenti (tempo o iterazioni, a scelta), all'inizio di ogni segmento resetto i pesi, ma durante aggiorno i pesi in base a sé una euristica viene scelta e alla qualità della soluzione che essa trova ($\omega_1$ se ottimo globale, $\omega_2$ se migliore di soluzione attuale, $\omega_3$ se peggiore o uguale di quella attuale ma comunque accettata, $\omega_4$ se peggiore o uguale di quella attuale e rigettata):
+\begin{equation*}
+	\rho_j^-=\lambda \rho_j^-+(1-\lambda)\Psi
+\end{equation*}
+ove $\Psi=\max \{\omega_1,\dots, \omega_4\}$ con le condizioni esposte prima, e $\Lambda\in [0,1]$ rappresenta il parametro di decadimento (valore numerico che misura la velocità con cui una determinata quantità diminuisce nel tempo o nello spazio). I pesi possono essere aggiornati anche in base a quanto migliorano, tempo necessario per euristica, n iterazioni da ultimo miglioramento, fase di ricerca (intensificazione/diversificazione). 
+
+Criterio di accettazione: accetto $x^t$ con probabilità
+\begin{equation*}
+	e^{-\frac{c(x^t)-c(x)}{T_n}}
+\end{equation*}
+dove $c(x)$ rappresenta il valore della f.o relativo alla soluzione $x$, $T_n$ è la temperatura all'iterazione $n$ ovvero una variabile globale dipendente dal tempo settata a valore alto $T_0$ all'inizio e diminuisce ad ogni iterazione secondo:
+\begin{equation*}
+	T_n=\alpha T_{n-1}=\alpha^nT_0
+\end{equation*}
+dove $\alpha\in [0,1]$ è un parametro chiamato \textbf{cooling rate} che determina quanto veloce diminuisce la temperatura (modificabile anche in altre situazioni nel caso). 
+
+Condizioni di terminazioni come quelle già viste in altri algoritmi.

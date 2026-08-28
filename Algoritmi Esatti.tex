@@ -1,1 +1,151 @@
 \section{Algoritmi Esatti}
+Algoritmi che garantiscono di trovare la soluzione ottimale (esempi Cutting Planes, Branch and Bound, Branch and Cut,...).
+Ridefiniamo:
+\begin{equation*}
+	\begin{aligned}
+		\min \quad & \quad c^Tx\\
+		Ax \quad = & \quad b\\
+		x \quad \ge & \quad 0 \quad integer
+	\end{aligned}
+\end{equation*}
+e sia $X$ l'insieme delle soluzioni intere ammissibili e $P:=\{x\ge 0:Ax=b\}$ il poliedro convesso (limitato, non vuoto) associato al suo rilassamento continuo.
+
+Si definisce, dato $x^*\in P$, \textbf{disuguaglianza valida} o \textbf{taglio (cut)} una disuguaglianza:
+\begin{equation*}
+	\alpha^Tx\le \alpha_0
+\end{equation*}
+tale che:
+\begin{enumerate}
+	\item $\alpha^Tx\le \alpha_0 \quad \forall x\in X:=P\cap Z^n$
+	\item $\alpha^Tx^*>\alpha_0$
+\end{enumerate}
+ovvero disuguaglianza valida per $X$ ma non per $x^*$. 
+
+Si definisce, dato $x^*$, un \textbf{problema di separazione} di $x^*$ da $X$ il problema di identificare un taglio $\alpha^Tx\le \alpha_0$. Su questi si basano cutting planes e branch and cut.\\
+
+\textbf{Cutting Planes}\\
+Sia dato un problema ILP:
+\begin{equation*}
+	\begin{aligned}
+		\min \quad & \quad c^Tx\\
+		Ax \quad = & \quad b\\
+		x \quad \ge & \quad 0 \quad integer
+	\end{aligned}
+\end{equation*}
+L'algoritmo generico consiste in 3 fasi:
+\begin{enumerate}
+	\item Risolvo il rilassamento continuo del problema e sia $x^*$ trovato la sua soluzione ottimale;
+	\item Se $x^*$ è intero, fine, già trovata;
+	\item Altrimenti aggiungi un taglio soddisfatto da tutte le soluzioni intere ma violato da $x^*$ e ritorna allo step 1.
+\end{enumerate}
+Sono da definire i tagli:
+\begin{itemize}
+	\item \textbf{Taglio di Gomory}: genero un taglio partendo dalle informazioni associate alla base corrispondente a $x^*$ del rilassamento continuo; genokkero il taglio dalla $t$-esima riga del tableu ottimale del simplesso:
+	\begin{equation*}
+		\sum_{j\in \Phi}\varphi (\bar{a}_{t,j})x_j\ge \varphi(\bar{b}_t)
+	\end{equation*}
+	dove $\Phi$ rappresenta l'insieme degli indici delle variabili non in base e $\varphi(r)$ rappresenta la parte frazionaria della variabile $r\in R$ calcolata come $\varphi (r):=r-\lfloor r \rfloor \ge 0$;
+	\item \textbf{Taglio generico}: sia $x^*$ soluzione ottimale del rilassamento continuo, assumiamo che sia frazionaria, sia $\Phi$ il set di indici di variabili non in base, vale per tutte le soluzioni intere:
+	\begin{equation*}
+		\sum_{i\in \Phi}x_i\ge 1
+	\end{equation*}
+\end{itemize}
+
+\textbf{Problema del Set Indipendente pesato}\\
+Dato un grafo non direzionato $G=(N,E), |N|=n, w_i\quad \forall i \in N$, determina un sottoinsieme di nodi $S$ di peso massimo tale per cui nessuna coppia di nodi di $S$ sia adiacente.
+Formulazione:
+\begin{equation*}
+	\begin{aligned}
+		\max \sum_{i=1}^nw_ix_i\\
+		x_i + x_j \le 1 \quad & \quad (i,j)\in E\\
+		x_i \in \{0,1\} \quad & \quad i=1,\dots,n
+	\end{aligned}
+\end{equation*}
+ove 1 $x_i=1$ se selezionato nodo $i$, 0 altrimenti.
+
+In una cricca (ogni nodo è collegato a tutti gli altri), posso selezionare al massimo un nodo per il set indipendente; mentre per un ciclo (set di nodi $C$ tale per cui gli unici edge che collegano i nodi nel set sono $(i_1,i_2), (i_2,i_3),\dots,(i_k,i_1)$) posso selezionare al massimo (per cardinalità dispari) $\frac{|C|-1}{2}$ nodi.
+
+\subsection{Branch and Bound}
+Si basa sull'idea di dividi e impera: divido il set delle variabili in una collezione di sottoinsiemi e risolvo ogni sottoproblema relativo a tale sottoinsieme: la soluzione ottima che risolve tutti i sottoproblemi è quella ottimale del problema ILP; siano $U$ un upper bound per il problema e $b(F_i)$ lower bound per il sottoproblema $F_i$. Algoritmo base è:
+\begin{enumerate}
+	\item Seleziono sottoproblema attivo $F_i$, se nessuno lo è mi fermo;
+	\item Se sottoproblema irrisolvibile elimino e torno a 1;
+	\item se $b(F_i)\ge U$, elimino $F_i$ (fathoming) e torno a 1;
+	\item se $F_i$ ha soluzione intera ottimale, aggiorno $U$ e torno a 1;
+	\item se $b(F_i)<U$ divido (branching) il sottoproblema in nuovi sottoproblemi e li aggiungo alla lista dei sottoproblemi attivi, torno a 1.
+\end{enumerate}
+
+Il branching può essere eseguito secondo diversi criteri, inoltre la selezione del sottoproblema può variare in base alla regola scelta (depth first, breadth first, best bound).
+
+Il \textbf{Branch and Cut} parte da un branch and bound nel quale ad ogni nodo $t$ dell'albero decisionale genera tagli per poter ottenere una soluzione ottimale $x^*$ del rilassato che sia continua e un lower bound più restrittivo. Questo rafforza la formulazione matematica del problema ed evita il problema del tailing-off di cutting planes (aggiungere sempre più vincoli lineari diminuisce i miglioramenti, portando ad uno stallo). Algoritmo base:
+\begin{enumerate}
+	\item Risolvi rilassato e $x^*$ soluzione ottimale;
+	\item se $x^*$ frazionaria, cerca nella pool di vincoli quali viola la soluzione, aggiungiamo questi vincoli al problema e risolviamo ancora;
+	\item ripeto procedura da step 2 fino a no vincoli violati dalla pool, se $x^*$ ancora frazionaria attivo procedura di separazione per trovare nuovi tagli o procedo con branching.
+\end{enumerate}
+La pool di vincoli presenta tagli globalmente validi lungo tutto l'albero decisionale, inoltre si usano una o più procedure di separazione per generare tagli globalmente validi. Servono diversi step per progettare un algoritmo di branch and cut: identificare feature strutturali del modello ILP, traduzione di tali feature in classi di disuguaglianze (analisi poliedrale) e per ogni class $C$ di disuguaglianze bisogna sviluppare procedure efficienti per la soluzione (esatta o euristica) del corrispettivo problema di separazione.
+
+Si definisce \textbf{problema di separazione per la classe $C$}, dato $\underline{x}^*$, l'identificazione, se esiste, della disuguaglianza valida $\alpha^T\underline{x}\le \alpha_0$ appartenente alla classe $C$ e tale per cui $\alpha^T\underline{x}^*>\alpha_0$.
+
+Più disuguaglianze valide identificate trovo più velocemente convergo alla soluzione ottima. L'algoritmo di separazione può essere euristico o esatto, la convergenza dipende dall'operazione di branching.\\
+
+\textbf{Index Selection Problem (ISP)}: abbiamo un database relazionale da progettare, se i dati vengono ordinati secondo certi indici la risposta alla query è molto più veloce. Ogni indice ha un costo fisso, dovuto alle operazioni di aggiornamento dati ricorrenti, e una quantità specifica di memoria.
+
+\subsection{Branch And Cut per ISP}
+Abbiamo: $m$ query, $n$ indici potenziali, $D$ dimensione della memoria disponibile per indici scelti, $c_j$ costo fisso di $j$, $d_j$ dimensione di indice $j$, $\gamma_{ij}$ costo per rispondere query $i$ tramite indice $j$ (unito a 0).
+
+Ogni variabile per ogni $j$ vale 1 se $j$ è scelto, 0 altrimenti. Per esprimere invece che ogni query, in una soluzione, è associata ad un indice selezionato, si introducono per ogni $i$ e per ogni $j$ (unito a 0):
+\begin{equation*}
+	x_{ij} = \begin{cases}
+		1 & \text{if query } i \text{ uses index } j, \\
+		0 & \text{otherwise.}
+	\end{cases}
+\end{equation*}
+$j=0$ è l'indice fittizio.
+
+Modello:
+\begin{center}
+	\includegraphics[width=12cm]{modellomatematicoispbac}
+\end{center}
+Il vincolo 4 esprime relazione logica tra $x_{ij}$ e $y_j$: quando $y_j=0$ impone $\sum_{i=1}^mx_{ij}=0$ che significa $x_{ij}=0$ per ogni $i$. Diventa inattivo quando $y_j=1$: ogni query può utilizzarlo, se conveniente.
+
+Da considerare: l'obiettivo vuole minimizzazione costi e questo fa sì che il rilassato assegni a $y_j^*$ il valore più piccolo possibile che possa soddisfare il vincolo 4, anche se tutti gli $x_{ij}^*$ fossero interi $y_j^*=1$ se e soltanto se $\sum_{i=1}^mx_{ij}^*=m$ ovvero indice $j$ usato da tutte le $m$ query, nelle soluzioni ottime intere le variabili $y_j=1$ verranno individuate da Branch and Bound solo nei nodi più profondi dell'albero decisionale ($2^k$ nodi, tantini).
+
+Si introducono due miglioramenti:
+\begin{itemize}
+	\item Se $\gamma_{i0}\le \gamma_{ij}$ allora fisso $x_{ij}=0$ (indice 0 più vantaggioso, non uso $j$ per $i$). Per ogni indice $j$ le uniche variabili attive sono $x_{ij}$, $i\in I_j, I_j:=\{i\in\{1,\dots,m\}:\gamma_{ij}<\gamma_{i0}\}$ che è il set di tutte le qury per cui l'indice 0 costa di più dell'indice $j$. Posso riformulare il vincolo 4 come:
+	\begin{equation*}
+		\sum_{i\in I_j}x_{ij}\le |I_j|y_j, j\in \{0,\dots, n\}
+	\end{equation*}
+	Riduco coefficiente da $m$ a $|I_j|$: formulazione più stringente, migliore. Branch and bound rimarebbe però ancora non efficiente...
+	\item Si identificano classi di disuguaglianze valida per ISP: imponiamo che un indice parzialmente selezionato sia anche parzialmente usato dalla query:
+	\begin{equation*}
+		\textrm{Class } C_1:\quad x_{ij}\le y_j,\quad j\in \{1,\dots, n\}, i\in I_j 
+	\end{equation*}
+	Possiamo derivare i vincoli visto nel primo miglioramento da qua semplicemente aggiungendo le condizioni $x_{ij}\le y_j$ per ogni $i\in I_j$, ma introdurremmo molti più vincoli, alcuni non necessari: meglio aggiungerli durante l'algoritmo (solo quelli violati) e risolvere il problema di separazione per $C_1$ ovvero dati $(x^*,y^*)$ bisogna trovare, se esiste, una coppia $(i,j)$ tale per cui $x_{ij}^*>y_j^*$.
+	
+	La classe $C_1$ contiene solo $\sum_{j=1}^n\le n \cdot m$ disuguaglianze: risolvo per enumerazione (per ogni indice $j$ per ogni $i \in I_j$ controllo se $x_{ij}^*>y_j^*$, se è così il vincolo è violato dalla soluzione ottima e lo introduco).
+	
+	Si può andare avanti con altre classi di disuguaglianze valide studiando le soluzioni frazionarie. 
+	\begin{equation*}
+		\textrm{Class} C_2:\quad \sum_{j\in S}y_j\le |S|-1, \forall S\subseteq \{1,\dots, n\}, S\neq \emptyset:\sum_{j\in S}d_j>D
+	\end{equation*}
+	In quanto ci sono $2^n-1$ possibili sottoinsiemi non nulli $S$, questa classe aggiunge un numero estremamente elevato di disuguaglianze: nuovo problema di separazione, enumero tutti i possibili sottoinsiemi e verifico $\sum_{j\in S}d_j>D$ e $\sum_{j\in S}y_j\le |S|-1$, oppure formulo il problema di separazione come un problema ILP. Nel secondo caso, introduco per ogni $j$ la variabile ausiliare $z_j$ che vale 1 se $j\in S$ 0 altrimenti. Riformuliamo il problema come quello di identificare, se esiste, il vettore $z\in \{0,1\}^n$ tale che:
+	\begin{equation*}
+		\begin{aligned}
+			w:=\sum_{j=1}^nz_j-\sum_{j=1}^ny_j^*z_j<1 & \quad \textrm{1-w violazione vincolo}\\
+			\sum_{j=1}^nd_jz_j\ge D+\epsilon & \quad \textrm{(validità taglio, $\epsilon>0$ piccolo, 1 se $d_1,\dots, d_n, D$ interi)}
+		\end{aligned}
+	\end{equation*}
+	Possiamo interpretare il primo come f.o, per identificare la classe $C_2$ come una violazione più grave (Problema del \textit{Knapsack Minimo}):
+	\begin{equation*}
+		\begin{aligned}
+			w:=\min \sum_{j=1}^n(1-y_j^*)z_j\\
+			\sum_{j=1}^nd_jz_j\ge D+\epsilon\\
+			0\le z_j\le 1 \quad interi, j\in \{1,\cdots, n\}
+		\end{aligned}
+	\end{equation*}
+	La soluzione a questo modello corrisponde al sottoinsieme $S$ con il massimo numero di vincoli violati: se $w^*<1$ il vincolo 9 è violato e può essere aggiunto al modello, altrimenti $(x^*,y^*)$ soddisfa tutti i potenziali $2^n-1$ vincoli di $C_2$.
+	
+	Si potrebbe anche limitare euristicamente la scelta di sottoinsiemi $S$ imponendo che $|S|\le k$ per un certo valore $k$ fissato in anticipo. Si considerano solo $S$ con $j$ tali che $y_j^*>0$, in quanto se $j\in S$ e $y_j^*=0$ allora il vincolo della classe $C_2$ non può essere violato, e si fa l'enumerazione di tutti.
+\end{itemize}

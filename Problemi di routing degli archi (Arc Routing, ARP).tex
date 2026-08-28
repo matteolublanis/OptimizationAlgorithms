@@ -1,1 +1,267 @@
 \section{Problemi di routing degli archi (Arc Routing, ARP)}
+In letteratura si distinguono tre classi principali di problemi di routing:
+\begin{enumerate}
+	\item \textbf{Node Routing}: il focus è sui \textit{nodi} (clienti) del grafo;
+	\item \textbf{Arc Routing}: il focus è sugli \textit{archi/spigoli} del grafo (servizi lungo le strade, molti clienti su un segmento stradale);
+	\item \textbf{General Routing}: entrambi.
+\end{enumerate}
+
+\textbf{Obiettivo degli ARP}: trovare il percorso (traversal) di costo minimo sui link (spigoli, archi) rispettando eventuali vincoli aggiuntivi. In passato l'applicabilità delle tecniche di ottimizzazione era limitata dalla tecnologia; oggi esistono pacchetti commerciali che fanno uso pesante di programmazione matematica, algoritmi avanzati, database, sistemi informativi geografici e interfacce grafiche interattive.
+
+Contesti applicativi: raccolta rifiuti, consegna della posta, sgombero neve, manutenzione stradale, pulizia delle strade, lettura dei contatori (gas ed elettricità) e altri.
+
+\subsection{Le origini: i ponti di Königsberg}
+La moderna teoria dei grafi e i primi teoremi noti nell'arc routing nascono con il famoso problema dei ponti di Königsberg:
+\begin{center}
+	\includegraphics[width=13cm]{konigsbergponti}
+\end{center}
+\textit{Una persona può attraversare tutti i ponti esattamente una volta, partendo da casa e tornandoci?}
+
+Eulero dimostrò che \textbf{non esiste soluzione}, cioè non esiste un cammino chiuso (closed walk) che includa tutti gli spigoli del grafo esattamente una volta. Perché una soluzione esista, ogni parte della città avrebbe dovuto essere collegata alle altre da un numero \textbf{pari} di ponti.
+\begin{center}
+	\includegraphics[width=5.5cm]{konigsberggrafo}
+\end{center}
+Lo stesso ragionamento si applica al problema di disegnare una figura con il minimo numero di tratti: quali di queste si possono disegnare con un tratto solo?
+\begin{center}
+	\includegraphics[width=12cm]{untratto}
+\end{center}
+\begin{center}
+	\includegraphics[width=7cm]{untrattorettangoli}
+\end{center}
+
+\subsection{Definizioni di base}
+\subsubsection*{Grafi non orientati}
+\begin{itemize}
+	\item \textbf{Grafo non orientato} $G=(V,E)$, con $V=\{v_1,v_2,\dots,v_n\}$ insieme finito di $n$ vertici ed $E=\{e_1,e_2,\dots,e_m\}$ insieme finito di $m$ spigoli (coppie non ordinate di vertici);
+	\item $\Gamma (v_i)=\{v_j\in V:(v_i,v_j)\in E\}$, e $|\Gamma (v_i)|$ è il \textbf{grado} del vertice $v_i$;
+	\item un grafo è \textbf{completo} quando contiene uno spigolo per ogni coppia di vertici;
+	\item un \textbf{cammino} non orientato è una sequenza di spigoli consecutivi (adiacenti) $e_1,e_2,\dots,e_k\in E$ tali che $e_1=[v_1,v_2],e_2=[v_2,v_3],\dots,e_k=[v_k,v_{k+1}]$;
+	\item un \textbf{ciclo} non orientato è un cammino in cui il primo e l'ultimo vertice coincidono;
+	\item cammini e cicli sono \textbf{semplici} se nessuno spigolo compare più di una volta, ed \textbf{elementari} se nessun vertice è visitato più di una volta (con l'unica eccezione del vertice iniziale/terminale in un ciclo);
+	\item un grafo non orientato è \textbf{connesso} quando per ogni coppia di vertici esiste almeno un cammino che li collega;
+	\item un grafo non orientato, connesso e senza cicli, è un \textbf{albero}.
+\end{itemize}
+
+\subsubsection*{Grafi orientati}
+\begin{itemize}
+	\item \textbf{Grafo orientato} $G=(V,A)$: $V$ è l'insieme finito di $n$ nodi, mentre $A=\{a_1,a_2,\dots,a_m\}$ è l'insieme finito di $m$ archi orientati, ovvero coppie ordinate di nodi;
+	\item $\Gamma^+(v_i)=\{v_j\in V:(v_i,v_j)\in A\}$ e $\Gamma^-(v_i)=\{v_j\in V:(v_j,v_i)\in A\}$, da cui $d^+(v_i)=|\Gamma^+(v_i)|$ (\textbf{out-degree}) e $d^-(v_i)=|\Gamma^-(v_i)|$ (\textbf{in-degree});
+	\item $G$ è \textbf{fortemente connesso} se tra due nodi qualsiasi di $V$ esiste almeno un cammino orientato che li collega;
+	\item $G$ è \textbf{debolmente connesso} se il grafo non orientato indotto è connesso.
+\end{itemize}
+
+\subsubsection*{Cicli hamiltoniani ed euleriani}
+\begin{itemize}
+	\item un ciclo è \textbf{hamiltoniano} se attraversa ogni \textit{nodo} del grafo una e una sola volta (con l'unica eccezione del nodo iniziale e finale che, per definizione, devono coincidere); un grafo è hamiltoniano se è possibile identificare in esso un ciclo hamiltoniano;
+	\item un ciclo è \textbf{euleriano} se attraversa ogni \textit{spigolo (arco)} del grafo esattamente una volta (e tutti i vertici almeno una volta); un grafo è euleriano se è possibile identificare in esso un ciclo euleriano.
+\end{itemize}
+
+\subsection{Caratterizzazione dei grafi euleriani}
+Un grafo connesso $G$ si dice \textbf{euleriano} (o \textit{unicursale}) se esiste un ciclo (cammino chiuso) che include tutti gli spigoli di $G$ esattamente una volta e ogni vertice almeno una volta. Le condizioni necessarie e sufficienti dipendono dal tipo di grafo: non orientato, orientato o misto.
+
+\subsubsection*{Grafo non orientato}
+Condizione necessaria e sufficiente perché un grafo non orientato e connesso $G$ sia euleriano: \textbf{tutti i vertici hanno grado pari}.
+\begin{center}
+	\includegraphics[width=12cm]{eulerianononorientato}
+\end{center}
+Nel grafo di sinistra solo i vertici $1,2,5$ hanno grado pari, quindi non esiste ciclo euleriano. In quello di destra tutti i vertici hanno grado pari e un ciclo euleriano è $1-2-3-4-3-5-4-2-5-1$.
+
+\subsubsection*{Grafo orientato}
+Condizione necessaria e sufficiente perché un grafo orientato e fortemente connesso $G$ sia euleriano: \textbf{tutti i vertici devono essere simmetrici}, ovvero in-degree $=$ out-degree.
+\begin{center}
+	\includegraphics[width=12cm]{eulerianoorientato}
+\end{center}
+Nel grafo di sinistra solo i vertici $1,5$ soddisfano la condizione di simmetria, quindi non esiste ciclo euleriano. In quello di destra la condizione è soddisfatta e $1-2-3-1-4-3-4-5-1$ è un ciclo euleriano.
+
+Da osservare che nel caso orientato la \textbf{parità} dei vertici resta una condizione \textit{necessaria} ma \textit{non sufficiente}: se $d^+(v_i)=d^-(v_i)$ allora il grado totale $d^+(v_i)+d^-(v_i)=2d^+(v_i)$ è pari, ma il viceversa non vale (un nodo con $d^+=2$ e $d^-=0$ ha grado totale pari e comunque non permette un ciclo euleriano).
+
+\subsection{Dal problema decisionale all'ottimizzazione}
+Il problema dei ponti di Königsberg pone una domanda: dato un grafo non orientato e connesso, esiste un cammino chiuso che attraversa tutti i suoi spigoli esattamente una volta? La risposta a questo \textbf{problema decisionale} è SÌ o NO, non c'è ottimizzazione.
+
+Meigu Guan [1962] è stato il primo a introdurre l'ottimizzazione nel problema, formulando il ben noto \textbf{Chinese Postman Problem}.
+
+\subsection{Classificazione di base}
+\begin{center}
+	\includegraphics[width=12cm]{classificazionearp}
+\end{center}
+\begin{itemize}
+	\item \textbf{Asse verticale}: dall'alto verso il basso i problemi diventano più generali. Il CPP è il meno generale (il servizio è richiesto su \textit{ogni} spigolo del grafo), l'RPP lo generalizza (il servizio è richiesto solo su un sottoinsieme degli spigoli) e infine il GRP generalizza entrambi, dato che il servizio è richiesto solo su un sottoinsieme di spigoli \textit{e} di nodi;
+	\item \textbf{Asse orizzontale}: da sinistra verso destra i problemi diventano più generali dal punto di vista del tipo di grafo. I meno generali sono quelli su grafi non orientati, dove gli spigoli possono essere serviti in entrambe le direzioni con lo stesso costo. Nel caso orientato (D) gli spigoli devono essere attraversati e serviti in una direzione specifica e vengono chiamati archi. I problemi su grafi misti (M) sono ancora più generali: il grafo è composto sia da archi sia da spigoli. I problemi su grafi \textit{windy} (W) sono i più generali: si ha un grafo non orientato con costi diversi a seconda della direzione in cui uno spigolo viene attraversato e, potendo usare costi pari a $\infty$, si possono ricreare tutti i tipi di grafo precedenti.
+\end{itemize}
+
+\subsection{Chinese Postman Problem (CPP)}
+Dato un grafo non orientato $G=(V,E)$, il CPP cerca un \textbf{ciclo di costo minimo che attraversi ogni spigolo del grafo almeno una volta}.
+$$\Downarrow$$
+Questo corrisponde a determinare l'\textbf{augmentation di costo minimo} di un grafo non euleriano che renda pari il grado di tutti i vertici, cioè a identificare il sottoinsieme di spigoli che verranno attraversati più di una volta.
+
+\textit{Osservazione}: si può dimostrare che non è mai ottimale attraversare lo stesso spigolo più di due volte.\\
+
+\textbf{Formulazione (A)}: $x_e=1$ se e solo se una copia dello spigolo $e$ compare nell'augmentation.
+\begin{equation*}
+	\begin{aligned}
+		\min \sum_{e\in E}c_ex_e\\
+		\sum_{e\in \delta (i)}x_e \equiv 1 \pmod 2 \quad & \quad i\in \bar{S}\\
+		\sum_{e\in \delta (i)}x_e \equiv 0 \pmod 2 \quad & \quad i\in V\backslash \bar{S}\\
+		x_e\in \{0,1\} \quad & \quad e\in E
+	\end{aligned}
+\end{equation*}
+dove $\bar{S}\subseteq V$ è l'insieme dei vertici di grado dispari.\\
+
+\textbf{Formulazione (B)}: $x_e=$ numero di copie dello spigolo $e$ da aggiungere a $G$.
+\begin{equation*}
+	\begin{aligned}
+		\min \sum_{e\in E}c_ex_e\\
+		\sum_{e\in \delta (S)}x_e \ge 1 \quad & \quad S\subset V, S \textrm{ dispari}\\
+		x_e \ge 0 \quad & \quad e\in E\\
+		x_e \textrm{ intero} \quad & \quad e\in E
+	\end{aligned}
+\end{equation*}
+dove $S\subset V$ contiene un numero dispari di vertici di grado dispari.
+
+Osservazioni sulle due formulazioni:
+\begin{enumerate}
+	\item la formulazione (A) può essere risolta come un \textbf{Perfect Matching Problem} sul grafo $\bar{G}(\bar{S},E_{\bar{S}})$ con $E_{\bar{S}}=\{e=(i,j)\in E:i,j\in \bar{S},i<j\}$;
+	\item la formulazione (B) è stata fornita da Edmonds e Johnson [1973]. In particolare:
+	\begin{itemize}
+		\item si può dimostrare che il primo insieme di vincoli (chiamati \textit{blossom} o \textit{odd-cut inequalities}) garantisce la parità dei vertici;
+		\item la formulazione (B) fornisce l'\textbf{inviluppo convesso} delle soluzioni del problema;
+		\item le blossom inequalities possono essere separate in tempo polinomiale.
+	\end{itemize}
+\end{enumerate}
+
+\subsubsection*{Risoluzione del CPP su grafo non orientato}
+\begin{itemize}
+	\item Se il grafo è \textbf{euleriano} $\rightarrow$ la soluzione è nota (il ciclo euleriano stesso);
+	\item se il grafo \textbf{non è euleriano} $\rightarrow$ almeno uno spigolo deve essere attraversato più di una volta $\rightarrow$ si trova la soluzione risolvendo un Perfect Matching Problem (PMP) di costo minimo: si identifica il numero di copie di ogni spigolo da aggiungere al grafo per renderlo euleriano a costo minimo $\rightarrow$ risolvibile in tempo polinomiale, $O(|\bar{S}|^3)$ (algoritmi a complessità inferiore che sfruttano strutture dati: Galil et al. [1986], Derigs e Metz [1991]).
+\end{itemize}
+
+Algoritmo polinomiale per il CPP non orientato:
+\begin{enumerate}
+	\item Calcolo il cammino minimo tra ogni coppia di vertici di grado dispari;
+	\item costruisco un grafo completo $\bar{G}$ sui vertici di grado dispari, con costi degli spigoli pari ai cammini minimi calcolati;
+	\item risolvo un Perfect Matching Problem di costo minimo su $\bar{G}$;
+	\item aggiungo gli spigoli individuati al grafo iniziale per ottenere la parità dei vertici $\rightarrow$ il grafo risultante è euleriano;
+	\item uso un algoritmo noto (Hierholzer [1873], Fleury [1883]) per determinare l'ordine di visita degli spigoli $\rightarrow$ costruzione del ciclo euleriano.
+\end{enumerate}
+
+\subsubsection*{Esempio: CPP non orientato}
+Risolviamo il CPP sul seguente grafo non orientato, che non è euleriano:
+\begin{center}
+	\includegraphics[width=6cm]{cppesempio}
+\end{center}
+I vertici di grado dispari sono $1,3,4,6$. I cammini minimi tra ogni coppia di vertici dispari sono:
+\begin{itemize}
+	\item $(1,3)\rightarrow costo:4\rightarrow cammino:(1,4),(4,3)$;
+	\item $(1,4)\rightarrow costo:2\rightarrow cammino:(1,4)$;
+	\item $(1,6)\rightarrow costo:3\rightarrow cammino:(1,6)$;
+	\item $(3,4)\rightarrow costo:2\rightarrow cammino:(3,4)$;
+	\item $(3,6)\rightarrow costo:4\rightarrow cammino:(3,6)$;
+	\item $(4,6)\rightarrow costo:3\rightarrow cammino:(4,6)$.
+\end{itemize}
+Un \textbf{perfect matching} è un sottoinsieme di spigoli $M$ tale che ogni nodo è toccato da esattamente uno spigolo di $M$. I matching possibili sul grafo $\bar{G}$ sono:
+\begin{itemize}
+	\item $(1,3),(4,6)\rightarrow costo:7$;
+	\item $(1,4),(3,6)\rightarrow costo:6$;
+	\item $(1,6),(3,4)\rightarrow costo:5$.
+\end{itemize}
+Il perfect matching ottimo è quindi $(1,6),(3,4)$ di costo 5:
+\begin{center}
+	\includegraphics[width=6cm]{cppmatching}
+\end{center}
+Aggiungendo questi spigoli al grafo iniziale si ottiene la soluzione ottima, con ciclo euleriano $1,2,6,5,1,3,6,4,3,4,1,6,1$:
+\begin{center}
+	\includegraphics[width=6.5cm]{cppsoluzione}
+\end{center}
+
+\subsection{Undirected Rural Postman Problem (URPP)}
+L'URPP su un grafo $G=(V,E)$ rappresenta una generalizzazione del CPP non orientato in cui:
+\begin{itemize}
+	\item solo un sottoinsieme $R\subseteq E$ di spigoli deve essere attraversato (\textbf{required edges});
+	\item $G$ è connesso, ma il sottografo di $G$ indotto da $R$, $G_R=(V_R,R)$, non deve necessariamente esserlo.
+\end{itemize}
+L'URPP è \textbf{NP-hard} (per riduzione dal Traveling Salesman Problem asimmetrico) quando il grafo $G_R=(V_R,R)$ non è connesso: la complessità è legata al numero di componenti connesse (chiamate \textbf{R-components}) del sottografo $G_R$.
+
+Dato un grafo non orientato $G=(V,E)$, l'RPP cerca un ciclo di costo minimo che attraversi almeno una volta gli spigoli appartenenti al sottoinsieme $R\subseteq E$. Formulazione matematica di Corberán \& Sanchis (1994), con $x_e=$ numero di copie di $e$ da aggiungere al grafo $G_R$ indotto da $R$:
+\begin{equation*}
+	\begin{aligned}
+		\min \sum_{e\in E}c_ex_e\\
+		\sum_{e\in \delta (S)}x_e \ge 2 \quad & \quad S\subset V_R, \delta_R(S)=\emptyset\\
+		\sum_{e\in \delta (i)}x_e \equiv |\delta_R(i)| \pmod 2 \quad & \quad i \in V_R\\
+		x_e\ge 0 \textrm{ e intero} \quad & \quad e\in E
+	\end{aligned}
+\end{equation*}
+dove:
+\begin{itemize}
+	\item $G_R$ è il sottografo di $G$ indotto da $R$;
+	\item $V_R\subseteq V$ è il sottoinsieme di vertici incidenti agli spigoli in $R$;
+	\item $\delta_R(S)=\delta (S)\cap R$;
+	\item $\delta_R(i)=$ spigoli di $R$ incidenti al vertice $i$.
+\end{itemize}
+\textit{Osservazione 1}: il grafo usato nella formulazione è ottenuto da $G_R$ aggiungendo alcuni spigoli.
+
+\textit{Osservazione 2}: nella formulazione il primo insieme di vincoli garantisce la \textbf{connettività} della soluzione, mentre il secondo la \textbf{parità} dei vertici.
+
+Costruzione del grafo usato nella formulazione matematica:
+\begin{enumerate}
+	\item aggiungo a $G_R=(V_R,R)$ uno spigolo non richiesto tra ogni coppia di vertici in $V_R$, con costo pari alla lunghezza del cammino minimo su $G$;
+	\item per ogni coppia (se esiste) di spigoli paralleli con lo stesso costo ne elimino uno;
+	\item rimuovo tutti gli spigoli $e=(i,j)\notin R$ tali che $c_{ij}=c_{ik}+c_{kj}$ per qualche vertice $k$.
+\end{enumerate}
+
+\subsubsection*{Risoluzione dell'URPP}
+Dato il grafo indotto $G_R$ dobbiamo identificare il numero di copie di spigoli da aggiungere a $G_R$ per renderlo euleriano a costo minimo:
+\begin{itemize}
+	\item se il grafo indotto $G_R$ è \textbf{connesso} $\rightarrow$ CPP non orientato $\rightarrow$ problema risolvibile in tempo polinomiale;
+	\item se il grafo indotto $G_R$ ha \textbf{più R-components} $\rightarrow$ il problema è NP-hard $\rightarrow$ metodi euristici.
+\end{itemize}
+
+\subsubsection*{Esempio: RPP non orientato}
+Risolviamo l'RPP sul seguente grafo (in grassetto gli spigoli richiesti):
+\begin{center}
+	\includegraphics[width=6cm]{rppesempio}
+\end{center}
+Il grafo indotto dagli spigoli richiesti è connesso:
+\begin{center}
+	\includegraphics[width=6cm]{rppindotto}
+\end{center}
+I vertici di grado dispari sono $1,2,5,6$. I cammini minimi \textbf{sul grafo originale} $G$ sono:
+\begin{itemize}
+	\item $(1,2)\rightarrow costo:3\rightarrow cammino:(1,2)$;
+	\item $(1,5)\rightarrow costo:4\rightarrow cammino:(1,5)$;
+	\item $(1,6)\rightarrow costo:3\rightarrow cammino:(1,6)$;
+	\item $(2,5)\rightarrow costo:5\rightarrow cammino:(2,6),(6,5)$;
+	\item $(2,6)\rightarrow costo:2\rightarrow cammino:(2,6)$;
+	\item $(5,6)\rightarrow costo:3\rightarrow cammino:(5,6)$.
+\end{itemize}
+I matching possibili sono:
+\begin{itemize}
+	\item $(1,2),(5,6)\rightarrow costo:6$;
+	\item $(1,5),(2,6)\rightarrow costo:6$;
+	\item $(1,6),(2,5)\rightarrow costo:8$.
+\end{itemize}
+Ci sono quindi \textbf{due} perfect matching ottimi, entrambi di costo 6, che portano a due soluzioni ottime con cicli euleriani $1,2,6,5,6,3,1$ e $1,3,6,2,6,5,1$:
+\begin{center}
+	\includegraphics[width=13cm]{rppsoluzioni}
+\end{center}
+
+\subsubsection*{Grafo indotto non connesso: algoritmo di Frederickson}
+Assunzione: il grafo non orientato $G$ contiene $p$ componenti connesse mutuamente disgiunte. L'algoritmo euristico di Frederickson [1979] è:
+\begin{enumerate}
+	\item Costruisco un minimum spanning tree sul grafo ausiliario $H$ $\rightarrow$ sia $T$ l'insieme di spigoli dello spanning tree;
+	\item risolvo un problema di matching di costo minimo sull'insieme dei vertici di grado dispari nel grafo indotto da $E_R\cup T$ $\rightarrow$ sia $M$ l'insieme di spigoli del matching calcolato;
+	\item trovo un ciclo euleriano nel grafo indotto da $E_R\cup T\cup M$.
+\end{enumerate}
+Il grafo ausiliario $H$ contiene un vertice per ogni componente connessa, e il costo tra due vertici qualsiasi di $H$ è pari al cammino minimo tra di essi su $G$; anche i costi degli spigoli nel problema di matching sono cammini minimi su $G$.
+
+Nell'esempio seguente si parte da tre componenti connesse, collegate dagli spigoli non richiesti (in chiaro):
+\begin{center}
+	\includegraphics[width=8cm]{frederickson1}
+\end{center}
+Lo step 1 individua lo spanning tree $T$ di costo minimo sul grafo ausiliario (in evidenza gli spigoli scelti, di costo 3 e 2):
+\begin{center}
+	\includegraphics[width=8cm]{frederickson2}
+\end{center}
+Lo step 2 risolve il matching sui vertici di grado dispari del grafo indotto da $E_R\cup T$ (in figura i vertici evidenziati), e lo step 3 costruisce il ciclo euleriano su $E_R\cup T\cup M$; la tabella riporta i cammini associati a ogni coppia accoppiata:
+\begin{center}
+	\includegraphics[width=11cm]{frederickson3}
+\end{center}

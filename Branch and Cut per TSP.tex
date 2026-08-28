@@ -1,1 +1,305 @@
 \section{Branch and Cut per TSP}
+\subsection{Formulazione matematica}
+Dato un grafo orientato $G=(V,A)$:
+\begin{equation*}
+	\begin{aligned}
+		\min \sum_{(i,j)\in A}c_{ij}x_{ij} \quad & \quad (1)\\
+		\sum_{(i,j)\in \delta^-(j)}x_{ij}=1 \quad & \quad j\in V \quad (2)\\
+		\sum_{(i,j)\in \delta^+(i)}x_{ij}=1 \quad & \quad i\in V \quad (3)\\
+		\sum_{(i,j)\in \delta(S)}x_{ij}\ge 1 \quad & \quad S\subset V:1\in S \quad (4)\\
+		x_{ij}\ge 0 \textrm{ intero} \quad & \quad (i,j)\in A \quad (5)
+	\end{aligned}
+\end{equation*}
+dove:
+\begin{itemize}
+	\item $\delta (S)=\{(i,j)\in A\mid i \in S, j\notin S\}$;
+	\item la condizione $x_{ij}\le 1$ è implicata dai vincoli (2) e (3);
+	\item ogni soluzione che soddisfa i vincoli (2) e (3) corrisponde a una \textbf{famiglia di circuiti disgiunti} che copre una e una sola volta tutti i nodi di $G$ (i vincoli di grado da soli non bastano a garantire un unico tour);
+	\item i vincoli (4) impongono la \textbf{connettività} e richiedono che ogni nodo $t\neq 1$ sia raggiungibile dal deposito (nodo 1).
+\end{itemize}
+
+\subsection{Algoritmo base}
+Gli $O(2^n)$ vincoli di connettività (CC) vengono \textbf{rimossi} dal modello e, per ogni nodo dell'albero di branch-and-cut, si eseguono le seguenti operazioni:
+\begin{enumerate}
+	\item Risolvo il rilassamento continuo;
+	\item se il valore del rilassato è peggiore della migliore soluzione intera corrente, faccio fathoming del nodo;
+	\item se tutte le variabili hanno valore intero e non ci sono vincoli di connettività violati, faccio fathoming del nodo;
+	\item aggiungo al modello uno (o più) vincoli di connettività violati. Se non ce ne sono, seleziono una variabile frazionaria ed eseguo un'operazione di branching (che genera 2 nodi aggiuntivi). Altrimenti torno allo step 1.
+\end{enumerate}
+
+\subsection{Problema di separazione per i vincoli di connettività}
+Dato un punto $x^*\ge 0$, trovare un sottoinsieme di nodi $S^*\subset V$ tale che:
+\begin{itemize}
+	\item $1\in S^*$;
+	\item $\gamma^*:=\sum_{(i,j)\in \delta (S^*)}x_{ij}^*$ sia minimo.
+\end{itemize}
+Se $\gamma^*\ge 1\rightarrow$ non ci sono vincoli di tipo (4) violati.
+
+Se $\gamma^*<1\rightarrow \sum_{(i,j)\in \delta (S^*)}x_{ij}\ge 1$ è il vincolo di tipo (4) \textbf{più violato} da $x^*$.
+\begin{center}
+	\includegraphics[width=9cm]{separazionecc}
+\end{center}
+
+Come risolviamo il problema di separazione? Partiamo dal modo più inefficiente possibile, l'\textbf{enumerazione completa}: dati $G$ e $x^*$, inizializzo $S^*\leftarrow \emptyset$ e $maxViolation\leftarrow 0$, poi per ogni $S\subset V$ con $1\in S$, se
+\begin{equation*}
+	1-\sum_{(i,j)\in \delta (S)}x_{ij}^*>maxViolation
+\end{equation*}
+allora aggiorno $maxViolation$ con quel valore e pongo $S^*\leftarrow S$; alla fine ritorno $S^*$.
+
+\subsection{Esempio}
+Risolviamo con il branch-and-cut la seguente istanza TSP: $G=(V,A)$ con $V=\{1,2,3,4,5,6\}$ e $G$ grafo completo.
+
+La soluzione ottima del rilassamento continuo iniziale ha costo $20.80$ ed è composta da tre sottocicli disgiunti:
+\begin{center}
+	\includegraphics[width=7.5cm]{bctsplp0}
+\end{center}
+Usiamo l'algoritmo di separazione per identificare i vincoli violati:
+\begin{itemize}
+	\item $S=\{1,4\}\rightarrow \sum_{(i,j)\in \delta (S)}x_{ij}^*=0\rightarrow$ vincolo violato;
+	\item $S=\{1,2,4,6\}\rightarrow \sum_{(i,j)\in \delta (S)}x_{ij}^*=0\rightarrow$ vincolo violato;
+	\item $S=\{1,3,4,5\}\rightarrow \sum_{(i,j)\in \delta (S)}x_{ij}^*=0\rightarrow$ vincolo violato.
+\end{itemize}
+Questi erano gli unici sottoinsiemi che violano i vincoli di connettività: prendendone uno qualsiasi altro, ad esempio $S=\{1,4,6\}$, si ottiene $\sum_{(i,j)\in \delta (S)}x_{ij}^*=1$, quindi il vincolo non è violato.
+
+Scegliamo $S=\{1,4\}$, aggiungiamo il vincolo $\sum_{(i,j)\in \delta (S)}x_{ij}\ge 1$ al modello e risolviamo di nuovo il rilassato, ottenendo costo $24.71$:
+\begin{center}
+	\includegraphics[width=7.5cm]{bctsplp1}
+\end{center}
+Applicando ancora la separazione si trovano tre vincoli violati: $S=\{1,2,6\}$, $S=\{1,2,4,6\}$ e $S=\{1,3,4,5\}$, tutti con $\sum_{(i,j)\in \delta (S)}x_{ij}^*=0.5<1$.
+
+Decidiamo di prendere $S=\{1,2,6\}$, aggiungiamo il vincolo e risolviamo: il costo resta $24.71$ ma la soluzione è diversa.
+\begin{center}
+	\includegraphics[width=8cm]{bctsplp2}
+\end{center}
+La separazione trova ora due vincoli violati: sia per $S=\{1,2,4,6\}$ sia per $S=\{1,3,4,5\}$ si ha $\sum_{(i,j)\in \delta (S)}x_{ij}^*=\frac{2}{3}<1$. Prendiamo $S=\{1,2,4,6\}$, aggiungiamo il vincolo e risolviamo ancora (costo $24.71$, soluzione ancora diversa):
+\begin{center}
+	\includegraphics[width=9cm]{bctsplp3}
+\end{center}
+La soluzione è frazionaria, ma l'algoritmo di separazione non trova più vincoli violati:
+$$\downarrow$$
+si fa \textbf{branching} sulla variabile $x_{13}$, generando $P1$ ($x_{13}\le 0$) e $P2$ ($x_{13}\ge 1$).
+
+La soluzione del rilassamento continuo del problema $P1$ è la seguente (costo $24.71$):
+\begin{center}
+	\includegraphics[width=8cm]{bctspp1lp}
+\end{center}
+Usando di nuovo la separazione si trova $S=\{1,3,4,5\}$ con $\sum_{(i,j)\in \delta (S)}x_{ij}^*=0.5$, vincolo violato. Aggiungendolo e risolvendo il rilassato di $P1$ si ottiene ancora costo $24.71$, ma ora tutte le variabili sono intere e non ci sono CC violati: aggiorniamo la miglior soluzione intera e facciamo fathoming del nodo.
+\begin{center}
+	\includegraphics[width=7.5cm]{bctspp1int}
+\end{center}
+La soluzione di $P2$ è invece la seguente, sempre di costo $24.71$, intera e senza CC violati: facciamo fathoming del nodo senza aggiornare la miglior soluzione intera, dato che ne abbiamo già una di valore $24.71$.
+\begin{center}
+	\includegraphics[width=7.5cm]{bctspp2int}
+\end{center}
+
+\subsection{Si può fare di meglio?}
+Ogni volta che dobbiamo verificare se una soluzione viola uno o più CC, bisogna controllare $2^{n-1}-1$ sottoinsiemi
+$$\downarrow$$
+nel nostro esempio abbiamo dovuto testare 31 sottoinsiemi ogni volta che abbiamo risolto un rilassamento continuo. In un'istanza di dimensione media ($n=50$) quel numero cresce a $562949953421311$: assumendo che servano $0.001$ secondi a un laptop standard per controllare un singolo sottoinsieme, servirebbero \textbf{17851 anni} per cercare i CC violati, per ogni rilassamento continuo!
+
+Il problema di separazione per la classe dei vincoli di connettività può però essere formulato come un problema di \textbf{MAX FLOW-MIN CUT}: dobbiamo quindi analizzare questo problema e un algoritmo in grado di risolverlo (l'algoritmo di Ford-Fulkerson).
+
+\subsection{Il problema di Max Flow}
+Un grafo orientato è un modello utile per rappresentare trasferimenti di quantità (\textbf{flussi}) da uno o più punti di produzione a uno o più punti di consumo. Applicazioni tipiche: problemi di trasporto (reti ferroviarie, collegamenti aerei, sistemi idrici), reti elettriche e di comunicazione, project planning, plant location, gestione delle risorse, pianificazione finanziaria.\\
+
+\textbf{Definizione 1 (rete di flusso)}: una rete di flusso è un grafo orientato $G=(V,A)$ in cui:
+\begin{enumerate}
+	\item a ogni arco $(i,j)\in A$ è associata una \textbf{capacità} $k_{ij}$ (ed eventualmente un costo $c_{ij}$);
+	\item si possono identificare un nodo \textbf{sorgente} $s$ e un nodo \textbf{pozzo} $t$ tali che $\delta^-(\{s\})=\delta^+(\{t\})=0$.
+\end{enumerate}
+\begin{center}
+	\includegraphics[width=9cm]{retedeiflussi}
+\end{center}
+
+\textbf{Definizione 2 (flusso ammissibile)}: data una rete di flusso, un flusso ammissibile da $s$ a $t$ è una funzione $x:A\rightarrow \mathbb{R}$ tale che:
+\begin{equation*}
+	\begin{aligned}
+		0\le x_{ij}\le k_{ij}, \quad & \quad (i,j)\in A \quad \textrm{(vincoli di capacità)}\\
+		\sum_{j:(i,j)\in A}x_{ij}-\sum_{j:(j,i)\in A}x_{ji}=0, \quad & \quad i\in V\backslash \{s,t\} \quad \textrm{(conservazione del flusso)}
+	\end{aligned}
+\end{equation*}
+
+\textbf{Definizione 3 (sezione o taglio)}: una sezione (cut) di una rete di flusso $G=(V,A)$ è una partizione $(S,V\backslash S)$ dell'insieme dei nodi tale che $s\in S$ e $t \in V\backslash S$.\\
+
+\textbf{Definizione 4 (flusso attraverso una sezione)}: dato un flusso ammissibile $x$, il flusso attraverso una sezione $(S,V\backslash S)$ è la quantità
+\begin{equation*}
+	\varphi (S):=\underbrace{\sum_{(i,j)\in \delta^+(S)}x_{ij}}_{\textrm{flusso uscente da } S}-\underbrace{\sum_{(i,j)\in \delta^-(S)}x_{ij}}_{\textrm{flusso entrante in } S}
+\end{equation*}
+dove $\delta^+(S):=\{(i,j)\in A:i\in S, j \notin S\}$ e $\delta^-(S):=\{(i,j)\in A:i\notin S, j\in S\}$.\\
+
+\textbf{Definizione 5 (capacità di una sezione)}: $k(S):=\sum_{(i,j)\in \delta^+(S)}k_{ij}$.\\
+
+\textbf{Teorema 1 (flusso costante attraverso una sezione)}: sia $x$ un flusso ammissibile; per ogni sezione $(S,V\backslash S)$ si può dimostrare che $\varphi (S):=\varphi_0$, ovvero che il flusso attraverso una sezione è costante.\\
+
+\textbf{Teorema 2 (upper bound per il flusso di sezione)}: per ogni flusso ammissibile $x$ e per ogni sezione $(S,V\backslash S)$ vale $\varphi (S)\le k(S)$.\\
+\textit{Dimostrazione}: dato che
+\begin{equation*}
+	\sum_{(i,j)\in \delta^+(S)}x_{ij}\le \sum_{(i,j)\in \delta^+(S)}k_{ij}=k(S) \quad \textrm{e} \quad \sum_{(i,j)\in \delta^-(S)}x_{ij}\ge 0
+\end{equation*}
+segue ovviamente che
+\begin{equation*}
+	\varphi (S):=\sum_{(i,j)\in \delta^+(S)}x_{ij}-\sum_{(i,j)\in \delta^-(S)}x_{ij}\le k(S)
+\end{equation*}
+$\square$\\
+
+\textbf{Definizione 6 (Max Flow Problem)}: determinare il valore del massimo flusso che può essere inviato attraverso una rete di flusso da un nodo $s$, detto sorgente, a un nodo destinazione $t$, detto pozzo.
+
+\subsubsection*{Esempio: voli notturni}
+Una compagnia di trasporti che gestisce voli notturni deve determinare quanti voli per notte possono partire da New York (NY) verso San Francisco (SF). I voli devono fare scalo in città di connessione ($A$, $B$, $C$, $D$) e, per lo spazio di atterraggio limitato, il numero di voli tra ogni coppia di città è limitato: NY-A 500, NY-B 400, A-C 300, A-D 250, B-C 200, B-D 150, C-SF 400, D-SF 350. Il modello è:
+\begin{equation*}
+	\begin{aligned}
+		\max \quad & \varphi_0\\
+		x_{NY,A}+x_{NY,B} & =\varphi_0\\
+		(x_{A,C}+x_{A,D})-x_{NY,A} & =0\\
+		(x_{B,C}+x_{B,D})-x_{NY,B} & =0\\
+		x_{C,SF}-(x_{A,C}+x_{B,C}) & =0\\
+		x_{D,SF}-(x_{A,D}+x_{B,D}) & =0\\
+		-x_{C,SF}-x_{D,SF} & =-\varphi_0\\
+		0\le x_{ij}\le k_{ij} \quad & \forall i,j
+	\end{aligned}
+\end{equation*}
+La matrice dei vincoli è la \textbf{matrice di incidenza nodi-archi}:
+\begin{center}
+	\footnotesize
+	\begin{tabular}{c|cccccccc}
+		& (NY,A) & (NY,B) & (A,C) & (A,D) & (B,C) & (B,D) & (C,SF) & (D,SF)\\
+		\hline
+		NY & 1 & 1 & 0 & 0 & 0 & 0 & 0 & 0\\
+		A & -1 & 0 & 1 & 1 & 0 & 0 & 0 & 0\\
+		B & 0 & -1 & 0 & 0 & 1 & 1 & 0 & 0\\
+		C & 0 & 0 & -1 & 0 & -1 & 0 & 1 & 0\\
+		D & 0 & 0 & 0 & -1 & 0 & -1 & 0 & 1\\
+		SF & 0 & 0 & 0 & 0 & 0 & 0 & -1 & -1
+	\end{tabular}
+\end{center}
+ed è \textbf{Totalmente Unimodulare (TUM)}.
+
+\subsubsection*{Formulazione generale}
+Con $G=(V,A)$ grafo orientato (network) e $k_{ij}$ capacità dell'arco $(i,j)\in A$, con $k_{ij}\ge 0$ e intera:
+\begin{equation*}
+	\begin{aligned}
+		\max \quad & \varphi_0\\
+		\sum_{j:(i,j)\in A}x_{ij}-\sum_{j:(j,i)\in A}x_{ji} & =\varphi_0 \quad & \textrm{se } i=s\\
+		\sum_{j:(i,j)\in A}x_{ij}-\sum_{j:(j,i)\in A}x_{ji} & =0 \quad & \textrm{se } i\in V\backslash \{s,t\}\\
+		\sum_{j:(i,j)\in A}x_{ij}-\sum_{j:(j,i)\in A}x_{ji} & =-\varphi_0 \quad & \textrm{se } i=t\\
+		x_{ij}\le k_{ij} \quad & & (i,j)\in A\\
+		x_{ij}\ge 0 \quad & & (i,j)\in A
+	\end{aligned}
+\end{equation*}
+\textit{Osservazione}: la matrice dei vincoli è TUM in quanto matrice di incidenza nodi-archi $\rightarrow$ la soluzione del rilassamento continuo è intera se le capacità $k_{ij}$ sono intere.
+
+I teoremi 1 e 2 implicano la seguente relazione di \textbf{dualità debole}: il valore del flusso massimo $\varphi_0^*$ non può eccedere la capacità $k(S^*)$ della sezione minima $(S^*,V\backslash S^*)$.
+
+Vale inoltre la seguente relazione di \textbf{dualità forte}:
+\begin{itemize}
+	\item \textbf{MAX-FLOW/MIN-CUT}: un flusso ammissibile $x$ è ottimo per il problema di max flow se e solo se esiste una sezione $(S^*,V\backslash S^*)$ con $\varphi (S^*)=k(S^*)$. In tal caso $(S^*,V\backslash S^*)$ è la sezione di capacità minima nella rete considerata.
+\end{itemize}
+
+\subsubsection*{Rete incrementale e cammini aumentanti}
+\textbf{Definizione 7 (rete incrementale)}: sia $x$ un flusso ammissibile. La rete incrementale $\bar{G}=(V,\bar{A})$ associata a $x$ si ottiene dalla rete originale $G=(V,A)$ sostituendo ogni arco $(i,j)\in A$ con due archi:
+\begin{itemize}
+	\item un arco \textbf{diretto} $(i,j)$ con capacità residua $\bar{k}_{ij}:=k_{ij}-x_{ij}\ge 0$;
+	\item un arco \textbf{inverso} $(j,i)$ con capacità residua $\bar{k}_{ji}:=x_{ij}\ge 0$;
+\end{itemize}
+e rimuovendo ogni arco con capacità residua nulla.\\
+
+\textbf{Definizione 8 (cammino aumentante)}: un cammino aumentante in una rete incrementale è un cammino da $s$ a $t$ che corrisponde, nella rete originale, a una sequenza di archi diretti (lungo i quali il flusso aumenta) e archi inversi (lungo i quali il flusso diminuisce).
+
+Esempio di un flusso di valore 3 in una rete con 4 nodi, e relativa rete incrementale con cammino aumentante:
+\begin{center}
+	\includegraphics[width=6cm]{flussoesempio}
+	\hspace{1cm}
+	\includegraphics[width=6cm]{reteincrementale}
+\end{center}
+
+\textbf{Teorema 3 (flusso ottimo)}: un flusso ammissibile $x$ è ottimo per il problema MAX-FLOW se e solo se il nodo $t$ non è raggiungibile da $s$ nella rete incrementale $\bar{G}=(V,\bar{A})$ associata a $x$.\\
+\textit{Dimostrazione}: sia $\varphi_0$ il valore del flusso $x$. Se $t$ è raggiungibile da $s$ in $\bar{G}$, allora esiste un cammino aumentante $P$ da $s$ a $t$. Posto $\delta:=\min\{\bar{k}_{uv}:(u,v)\in P\}\ge 0$, si aggiorna:
+\begin{itemize}
+	\item per ogni arco diretto $(u,v)\in P$: $x_{uv}:=x_{uv}+\delta$;
+	\item per ogni arco inverso $(u,v)\in P$: $x_{vu}:=x_{vu}-\delta$.
+\end{itemize}
+Il nuovo vettore $x$ rappresenta un flusso di valore $\varphi_0+\delta$ nella rete originale, quindi la soluzione di partenza non era ottima.
+
+Assumiamo ora che $t$ non sia raggiungibile da $s$ nella rete incrementale. Allora esiste una sezione $(S^*,V\backslash S^*)$ nella rete incrementale $\bar{G}$ tale che $\delta_{\bar{G}}^+(S^*)=0$. Per definizione, nella rete originale $G$:
+\begin{itemize}
+	\item ogni arco $(i,j)\in \delta_G^+(S^*)$ è saturo;
+	\item ogni arco $(i,j)\in \delta_G^-(S^*)$ è vuoto.
+\end{itemize}
+Pertanto
+\begin{equation*}
+	\varphi (S^*):=\sum_{(i,j)\in \delta_G^+(S^*)}x_{ij}-\sum_{(i,j)\in \delta_G^-(S^*)}x_{ij}=\sum_{(i,j)\in \delta_G^+(S^*)}k_{ij}-0=k(S^*)
+\end{equation*}
+e quindi $x$ è ottimo: per il teorema Max-Flow\slash Min-Cut la sezione $(S^*,V\backslash S^*)$ è quella di capacità minima nella rete originale. $\square$
+
+\subsection{Algoritmo di Ford-Fulkerson}
+È il più noto algoritmo greedy per la soluzione di problemi di max flow ed è basato sull'uso di reti incrementali e cammini aumentanti:
+\begin{enumerate}
+	\item $x:=0$, $\varphi_0:=0$, $optimal:=$ false;
+	\item ripeti:
+	\item costruisci la rete incrementale $\bar{G}(V,\bar{A})$ associata a $x$;
+	\item identifica, se esiste, un cammino $P$ da $s$ a $t$ in $\bar{G}$;
+	\item se $P$ non esiste allora $optimal:=$ true, altrimenti:
+	\item $\delta:=\min\{\bar{k}_{uv}:(u,v)\in P\}$ e $\varphi_0:=\varphi_0+\delta$;
+	\item per ogni $(u,v)\in P$: se $(u,v)$ è un arco diretto allora $x_{uv}:=x_{uv}+\delta$, altrimenti $x_{vu}:=x_{vu}-\delta$;
+\end{enumerate}
+finché $optimal:=$ true.
+
+\subsubsection*{Esercizio}
+Risolviamo con Ford-Fulkerson il problema di max flow sulla rete seguente ($s$ sorgente, $t$ pozzo, capacità riportate sugli archi) e determiniamo il taglio di capacità minima.
+\begin{center}
+	\includegraphics[width=11cm]{ffesercizio}
+\end{center}
+\textbf{Passo 1}: $\varphi_0=0$.\\
+\textbf{Passo 2}: cammino aumentante $P=s\rightarrow A\rightarrow C\rightarrow t$, con $\delta=\min\{3,2,3\}=2$, quindi $x_{s,A}=2$, $x_{A,C}=2$, $x_{C,t}=2$ e $\varphi_1=\varphi_0+\delta=0+2=2$.
+\begin{center}
+	\includegraphics[width=9cm]{ffstep2}
+\end{center}
+\textbf{Passo 3}: $P=s\rightarrow B\rightarrow C\rightarrow t$, con $\delta=\min\{9,6,1\}=1$, quindi $x_{s,B}=1$, $x_{B,C}=1$, $x_{C,t}=2+1=3$ e $\varphi_2=\varphi_1+\delta=2+1=3$.
+\begin{center}
+	\includegraphics[width=9cm]{ffstep3}
+\end{center}
+\textbf{Passo 4}: $P=s\rightarrow B\rightarrow D\rightarrow t$, con $\delta=\min\{8,3,8\}=3$, quindi $x_{s,B}=1+3=4$, $x_{B,D}=3$, $x_{D,t}=3$ e $\varphi_3=\varphi_2+\delta=3+3=6$.
+\begin{center}
+	\includegraphics[width=9cm]{ffstep4}
+\end{center}
+\textbf{Passo 5}: $P=s\rightarrow B\rightarrow C\rightarrow A\rightarrow D\rightarrow t$ (si noti l'uso dell'arco inverso $C\rightarrow A$), con $\delta=\min\{5,5,2,4,5\}=2$, quindi $x_{s,B}=4+2=6$, $x_{B,C}=1+2=3$, $x_{A,C}=2-2=0$, $x_{A,D}=2$, $x_{D,t}=3+2=5$ e $\varphi_4=\varphi_3+\delta=6+2=8$.
+\begin{center}
+	\includegraphics[width=9cm]{ffstep5}
+\end{center}
+\textbf{Passo 6}: $P=s\rightarrow A\rightarrow D\rightarrow t$, con $\delta=\min\{1,2,3\}=1$, quindi $x_{s,A}=2+1=3$, $x_{A,D}=2+1=3$, $x_{D,t}=5+1=6$ e $\varphi_5=\varphi_4+\delta=8+1=9$.
+\begin{center}
+	\includegraphics[width=9cm]{ffstep6}
+\end{center}
+\textbf{Passo 7}: non ci sono altri cammini aumentanti nella rete incrementale, quindi la soluzione corrente è ottima. La sezione di capacità minima è $S=\{s,B,C\}$ e $V\backslash S=\{A,D,t\}$:
+\begin{center}
+	\includegraphics[width=9cm]{fffinale}
+\end{center}
+
+\subsection{Separazione dei CC tramite Max Flow}
+Cosa succede se consideriamo $x_{ij}^*$ come la capacità associata a ogni arco $(i,j)\in A$ e risolviamo un problema di max flow?
+$$\Downarrow$$
+Nel nostro caso creiamo una rete $G^*=(V,A^*:=\{(i,j)\in A:x_{ij}^*>0\})$ con nodo sorgente $s:=1$ e con $k_{ij}=x_{ij}^*\quad \forall (i,j)\in A^*$. Il sottoinsieme $S^*$ che stiamo cercando corrisponde alla \textbf{sezione $(S^*,V\backslash S^*)$ di capacità minima} nella rete $G^*$.
+
+\textit{Osservazione}: il nodo pozzo $t$ non è definito \textit{a priori}
+$$\downarrow$$
+\begin{itemize}
+	\item la sezione $(S^*,V\backslash S^*)$ si ottiene selezionando sequenzialmente ogni nodo $t\in V\backslash \{1\}$ come pozzo;
+	\item la sezione di capacità minima $(S_t^*,V\backslash S_t^*)$ tra quelle con $1\in S_t^*$ e $t\notin S_t^*$ viene identificata usando un algoritmo di max flow (ad esempio Ford-Fulkerson).
+\end{itemize}
+
+\subsubsection*{Esempio}
+Consideriamo uno dei rilassamenti continui risolti nell'esempio precedente, quello del problema $P1$. Fissando $s=1$ e provando tutti i possibili pozzi si ottiene sempre max flow $=0.5<1$, quindi un vincolo violato:
+\begin{itemize}
+	\item $t=2\rightarrow S_2^*=\{1,3,4,5\}$;
+	\item $t=3\rightarrow S_3^*=\{1,2,6\}$;
+	\item $t=4\rightarrow S_4^*=\{1,2,6\}$;
+	\item $t=5\rightarrow S_5^*=\{1,2,6\}$;
+	\item $t=6\rightarrow S_6^*=\{1,3,4,5\}$.
+\end{itemize}
+Riportiamo i primi due casi (in rosso il pozzo, in verde i nodi di $S_t^*$, sugli archi flusso/capacità):
+\begin{center}
+	\includegraphics[width=10cm]{maxflowsept2}
+\end{center}
+\begin{center}
+	\includegraphics[width=10cm]{maxflowsept3}
+\end{center}

@@ -1,1 +1,318 @@
 \section{Algoritmi d'approssimazione}
+Un algoritmo d'approssimazione è un'euristica per cui si riesce a dimostrare un \textbf{bound garantito} sulla qualità della soluzione prodotta: non troviamo l'ottimo, ma sappiamo di quanto al massimo possiamo allontanarcene.
+
+Dati un problema di minimizzazione $\mathcal{P}$ e un algoritmo $H$ che ne calcola una soluzione, siano $z^*$ il valore della soluzione ottima e $z^H$ il valore della soluzione trovata da $H$.\\
+
+\textbf{Definizione ($\epsilon$-approssimazione)}: l'algoritmo $H$ è $\epsilon$-approssimato per $\mathcal{P}$ se esiste una costante $\epsilon \ge 0$ tale che:
+\begin{equation*}
+	\frac{z^H-z^*}{z^*}\le \epsilon
+\end{equation*}
+Da cui segue:
+\begin{equation*}
+	\begin{aligned}
+		\frac{z^H}{z^*}-1 \quad & \le \quad \epsilon\\
+		z^H \quad & \le \quad (1+\epsilon)z^*
+	\end{aligned}
+\end{equation*}
+Nel caso di massimizzazione la relazione diventa invece:
+\begin{equation*}
+	z^H\ge (1-\epsilon)z^*
+\end{equation*}
+Più $\epsilon$ è piccolo, migliore è la garanzia. Se non esiste alcun $\epsilon$ costante l'algoritmo può comportarsi \textit{infinitamente male}: nei casi seguenti si costruiscono famiglie di istanze parametriche proprio per mostrarlo.
+
+\subsection{Traveling Salesman Problem}
+Definizioni utili:
+\begin{itemize}
+	\item \textbf{Ciclo euleriano}: ciclo che parte da un nodo, visita ogni \textit{arco} esattamente una volta e ritorna al nodo di partenza;
+	\item \textbf{Ciclo hamiltoniano}: ciclo che parte da un nodo, visita ogni \textit{nodo} del grafo esattamente una volta e ritorna al nodo di partenza.
+\end{itemize}
+
+\textbf{Teorema (multigrafo euleriano)}: un multigrafo $G=(V,E)$ è euleriano se e solo se:
+\begin{enumerate}
+	\item $G$ è connesso;
+	\item ogni nodo in $V$ ha grado pari.
+\end{enumerate}
+
+Da qui in avanti assumiamo che la matrice delle distanze sia \textbf{simmetrica} e che le distanze soddisfino la \textbf{disuguaglianza triangolare}, ovvero che presi tre nodi qualsiasi $i,j,k$ valga:
+\begin{equation*}
+	c_{ik}+c_{kj}\ge c_{ij}\quad i\neq j\neq k\in V
+\end{equation*}
+Senza queste ipotesi il bound che segue non vale.
+
+\subsubsection*{Tree Algorithm}
+Dato un grafo $G=(V,E)$:
+\begin{enumerate}
+	\item Costruisco un minimum spanning tree $T$ di $G$;
+	\item Costruisco un multigrafo euleriano duplicando gli archi di $T$ (così ogni nodo ha grado pari e il grafo resta connesso);
+	\item Trovo un circuito euleriano $E$ sul multigrafo;
+	\item Costruisco il ciclo hamiltoniano $H$ selezionando, senza ripetizioni, i nodi nell'ordine in cui compaiono in $E$ (i nodi già visitati vengono saltati, \textit{shortcut}).
+\end{enumerate}
+\begin{center}
+	\includegraphics[width=8cm]{treealgoritmo}
+\end{center}
+
+\textbf{Teorema}: il Tree Algorithm è 1-approssimato.\\
+\textit{Dimostrazione}: siano $c(T)$ il costo del MST dello step 1, $c(E)$ il costo del ciclo euleriano dello step 3, $c(H)$ il costo del ciclo hamiltoniano dello step 4 e $c(H^*)$ il valore della soluzione ottima del TSP.
+
+Poiché vale la disuguaglianza triangolare, gli shortcut non possono peggiorare il costo:
+\begin{equation*}
+	c(H)\le c(E)\quad (1)
+\end{equation*}
+Per come è stato costruito il ciclo euleriano (duplicazione degli archi dell'albero):
+\begin{equation*}
+	c(E)=2c(T)\quad (2)
+\end{equation*}
+Da (1) e (2):
+\begin{equation*}
+	c(H)\le 2c(T)\quad (3)
+\end{equation*}
+Se rimuovo un singolo arco dal ciclo hamiltoniano ottimo $H^*$ ottengo uno spanning tree, che ha costo maggiore o uguale a quello del minimo spanning tree $T$, quindi:
+\begin{equation*}
+	c(H^*)\ge c(T)\quad (4)
+\end{equation*}
+Applicando (3) e (4):
+\begin{equation*}
+	\frac{c(H)}{c(H^*)}\le \frac{2c(T)}{c(T)}=2=1+\epsilon
+\end{equation*}
+con $\epsilon=1$. $\square$
+
+\subsubsection*{Esempio}
+Consideriamo l'istanza seguente, con $R=1$ e $c=\frac{1}{n^2}$: la figura b rappresenta il minimum spanning tree.
+\begin{center}
+	\includegraphics[width=11cm]{treealgoritmoesempio1}
+\end{center}
+L'algoritmo individua la soluzione della figura a, mentre l'ottimo è quello della figura b:
+\begin{center}
+	\includegraphics[width=11cm]{treealgoritmoesempio2}
+\end{center}
+Per $n\to \infty$ la soluzione euristica tende a $4\pi$ e quella ottima a $2\pi$: il rapporto 2 viene effettivamente raggiunto, quindi il bound è \textbf{stretto} (non può essere migliorato).
+
+\subsection{Maximum Independent Set}
+Dato un grafo non direzionato $G=(V,E)$ con $|V|=n$:
+\begin{equation*}
+	\begin{aligned}
+		\max \sum_{i=1}^nw_ix_i\\
+		x_i+x_j \le 1 \quad & \quad (i,j)\in E\\
+		x_i\in \{0,1\} \quad & \quad i\in V
+	\end{aligned}
+\end{equation*}
+Assunzione: $w_i=1\quad \forall i \in V$ (cerchiamo quindi il set indipendente di cardinalità massima).
+
+\subsubsection*{Algoritmo greedy}
+\begin{enumerate}
+	\item Parto da una soluzione vuota;
+	\item Ordino i vertici in una lista secondo grado non decrescente;
+	\item Seleziono il primo vertice della lista (quello di grado minimo);
+	\item Rimuovo dalla lista tutti i vertici adiacenti a quello selezionato;
+	\item Seleziono il vertice successivo nella lista e ripeto lo step 4 finché tutti i vertici non sono stati considerati.
+\end{enumerate}
+
+\subsubsection*{Analisi del caso peggiore}
+Questo algoritmo può comportarsi \textbf{infinitamente male}. L'istanza critica è composta da un set indipendente $I_t$ di $t$ vertici, una cricca $K_t$ di $t$ vertici, e un vertice aggiuntivo collegato solo ai vertici di $I_t$:
+\begin{center}
+	\includegraphics[width=12cm]{maxisstruttura}
+\end{center}
+Il set indipendente e la cricca sono inoltre \textbf{completamente connessi} fra loro (ogni vertice di $I_t$ è collegato a ogni vertice di $K_t$).
+
+Contiamo i gradi (nell'esempio $t=4$): il vertice 1 ha grado $t$, i vertici di $I_t$ hanno grado $t+1$ (la cricca più il vertice 1), quelli di $K_t$ hanno grado $2t-1$. Il minimo è quindi il vertice 1, che viene scelto per primo: questo elimina tutti i vertici del set indipendente e costringe l'euristica a prendere poi un solo vertice della cricca.
+\begin{center}
+	\includegraphics[width=13cm]{maxisgreedy}
+\end{center}
+La soluzione ottima consiste invece nel prendere tutti i vertici del set indipendente:
+\begin{center}
+	\includegraphics[width=12cm]{maxisottimo}
+\end{center}
+Quindi $z^H=2$ e $z^*=4=2z^H$. Al crescere di $t$ (numero di vertici del set indipendente e della cricca) l'approssimazione peggiora, e nel caso peggiore $t\to \infty$:
+\begin{itemize}
+	\item $z^H=2$ (resta costante);
+	\item $z^*\to \infty$.
+\end{itemize}
+Questo greedy è dunque un cattivo algoritmo? No, mediamente funziona bene: dipende dalla struttura del problema, ed è il problema in sé ad essere intrinsecamente difficile.
+
+\subsection{Minimum Vertex Cover}
+Dato un grafo non direzionato $G=(V,E)$ con $|V|=n$, si vuole identificare un insieme di vertici di costo minimo che copra tutti gli archi del grafo:
+\begin{equation*}
+	\begin{aligned}
+		\min \sum_{i=1}^nc_ix_i\\
+		x_i+x_j\ge 1 \quad & \quad (i,j)\in E\\
+		x_i\in \{0,1\} \quad & \quad i \in V
+	\end{aligned}
+\end{equation*}
+
+\subsubsection*{Algoritmo di rounding}
+\begin{enumerate}
+	\item Calcolo $x^{LP}$, la soluzione ottima del rilassamento continuo del problema;
+	\item Arrotondo:
+	\begin{equation*}
+		x_i^H=\begin{cases}
+			0, & \textrm{se } x_i^{LP}<0.5\\
+			1, & \textrm{se } x_i^{LP}\ge 0.5
+		\end{cases}
+	\end{equation*}
+\end{enumerate}
+
+\textbf{Attenzione}: arrotondare le soluzioni della programmazione lineare è in generale un metodo inaffidabile, perché la soluzione intera generata può cadere \textbf{fuori dalla regione ammissibile}.
+\begin{center}
+	\includegraphics[width=8cm]{roundingattenzione}
+\end{center}
+Nel caso del MVC invece l'ammissibilità è garantita.\\
+
+\textbf{Prova di ammissibilità per il MVC} (per assurdo):
+\begin{enumerate}
+	\item $x^{LP}$ soddisfa i vincoli del problema;
+	\item l'euristica produce una soluzione non ammissibile se almeno uno degli archi del grafo iniziale non è coperto dai vertici selezionati;
+	\item ma come potrebbe un arco non essere coperto? Solo se per entrambi gli estremi $i$ e $j$ valesse $x_i^{LP}<0.5$ e $x_j^{LP}<0.5$, cioè $x_i^{LP}+x_j^{LP}<1$;
+	\item in tal caso $x^{LP}$ violerebbe il vincolo dell'arco $(i,j)$, quindi sarebbe non ammissibile $\rightarrow$ \textbf{contraddizione}.
+\end{enumerate}
+
+\subsubsection*{Bound}
+La soluzione euristica seleziona un sottoinsieme $V'\subseteq V$, quindi $z^H=\sum_{i\in V'}c_i$, mentre $z^{LP}=\sum_{i\in V}c_ix_i^{LP}$. Vale:
+\begin{equation*}
+	z^H=\sum_{i\in V'}c_i\le 2\sum_{i\in V}c_ix_i^{LP}=2z^{LP}
+\end{equation*}
+Perché $2z^{LP}$ è un upper bound di $z^H$? Perché l'euristica seleziona solo nodi con $x_i^{LP}\ge 0.5$, per i quali $c_i\le 2c_ix_i^{LP}$. Il caso peggiore è quello in cui tutte le variabili selezionate nel rilassamento valgono esattamente $0.5$: l'euristica le prende tutte e il costo risulta il doppio del valore del rilassamento.
+
+Ricordando che $z^{LP}$ è un lower bound per la soluzione ottima e $z^H$ un upper bound:
+\begin{equation*}
+	z^H=\sum_{i\in V'}c_i\le 2\sum_{i\in V}c_ix_i^{LP}\le 2z^*
+\end{equation*}
+ovvero $z^H\le (1+\epsilon)z^*$ con $\epsilon=1$. Esempio di caso peggiore (ciclo di 4 nodi con costi unitari):
+\begin{center}
+	\includegraphics[width=6cm]{mvccasopeggiore}
+\end{center}
+
+\subsection{Bin Packing}
+Abbiamo un insieme di bin di capacità unitaria; ogni bin va riempito con item $i\in N$ di peso (volume) $a_i\le 1$. L'obiettivo è determinare come riempire i bin \textbf{minimizzando il numero di bin usati}.
+
+Da notare che spesso si tratta di un problema \textbf{dinamico} (gli item non sono noti in anticipo); noi consideriamo solo la versione \textbf{statica}, in cui tutti gli item sono noti.
+
+\subsubsection*{Next fit}
+\begin{enumerate}
+	\item Prendo il primo item della lista;
+	\item Aggiungo l'item al bin corrente; se non ci sta, apro un nuovo bin e ce lo metto dentro: il nuovo bin diventa quello corrente;
+	\item Seleziono l'item successivo nella lista e torno allo step 2.
+\end{enumerate}
+Si noti che, quando un item non entra in un bin, se ne apre semplicemente uno nuovo \textbf{senza controllare i precedenti}: la decisione è basata solo sull'ultimo bin aperto.
+
+\subsubsection*{Bound}
+Sia $z^H$ il numero di bin aperti da Next fit e $A=\sum_{i\in N}a_i$ la somma dei pesi di tutti gli item:
+\begin{enumerate}
+	\item $z^*\ge \lceil A \rceil$: se $A$ è frazionario, $z^*$ è almeno pari al più piccolo intero maggiore di $A$;
+	\item proviamo a limitare $z^H$ con $\lceil A \rceil$: se consideriamo una coppia di bin consecutivi, la somma dei pesi dei loro item deve essere maggiore di 1, altrimenti sarebbero stati inseriti in un unico bin;
+	\item quindi $z^H<2\lceil A\rceil$.
+\end{enumerate}
+\begin{equation*}
+	\frac{z^H}{z^*}<\frac{2\lceil A\rceil}{z^*}\le \frac{2\lceil A\rceil}{\lceil A\rceil}\le 2\rightarrow 1+\epsilon=2\rightarrow \epsilon=1
+\end{equation*}
+
+\subsubsection*{Caso peggiore}
+Sia $n$ un numero intero e $4n$ il numero di item, con pesi (in quest'ordine):
+\begin{equation*}
+	\frac{1}{2},\frac{1}{2n},\frac{1}{2},\frac{1}{2n},\frac{1}{2},\frac{1}{2n},\dots
+\end{equation*}
+Ci sono quindi $2n$ coppie $\left(\frac{1}{2},\frac{1}{2n}\right)$.
+
+Next fit usa $2n$ bin: ogni bin contiene un item di peso $\frac{1}{2}$ e uno di peso $\frac{1}{2n}$ (il successivo item da $\frac{1}{2}$ non ci starebbe più), quindi $z^H=2n$.
+
+La soluzione ottima mette invece coppie di item di peso $\frac{1}{2}$ in un bin ciascuna, e tutti gli item di peso $\frac{1}{2n}$ nello stesso bin:
+\begin{equation*}
+	z^*=\frac{1}{2}2n+\frac{1}{2n}2n=n+1
+\end{equation*}
+\begin{equation*}
+	\frac{z^H}{z^*}=\frac{2n}{n+1}\quad \textrm{che, per } n\to \infty, \quad \frac{z^H}{z^*}=2
+\end{equation*}
+Si noti che sia il numero di item sia i loro pesi devono dipendere da $n$.
+
+\subsection{Knapsack}
+Dato un insieme di item $N$, con $|N|=n$:
+\begin{equation*}
+	\begin{aligned}
+		\max \sum_{j=1}^np_jx_j\\
+		\sum_{j=1}^nw_jx_j\le b\\
+		x_j\in \{0,1\} \quad & \quad j\in N
+	\end{aligned}
+\end{equation*}
+Nota: $p_j$, $w_j$ ($j\in N$) e $b$ sono numeri interi.
+
+\subsubsection*{Euristiche basate sull'ordinamento degli item}
+Possibili criteri di ordinamento:
+\begin{itemize}
+	\item[A] $p_j\ge p_{j+1}\rightarrow$ prima gli item con profitto maggiore;
+	\item[B] $w_j\le w_{j+1}\rightarrow$ prima gli item con peso minore;
+	\item[C] $\frac{p_j}{w_j}\ge \frac{p_{j+1}}{w_{j+1}}\rightarrow$ prima gli item con profitto per unità di peso maggiore.
+\end{itemize}
+In tutti i casi si scorre la lista ordinata inserendo l'item se la capacità residua lo consente. Per dimostrare il caso peggiore delle euristiche A, B e C serve il valore del rilassamento continuo, che si calcola con la \textbf{formula di Dantzig}.
+
+\subsubsection*{Formula di Dantzig}
+\begin{enumerate}
+	\item Ordino gli item secondo l'euristica C;
+	\item Inserisco sequenzialmente gli item nello zaino finché non raggiungo l'\textbf{item critico}, ovvero un item che non può essere inserito perché eccederebbe la capacità dello zaino;
+	\item Inserisco solo una parte frazionaria dell'item critico.
+\end{enumerate}
+\begin{equation*}
+	\begin{aligned}
+		x_j^{LP} & =1 \quad & j=1,\dots,s-1\\
+		x_j^{LP} & =0 \quad & j=s+1,\dots,n\\
+		x_s^{LP} & =\frac{b-\sum_{j=1}^{s-1}w_j}{w_s} &
+	\end{aligned}
+\end{equation*}
+Nota: tutte le variabili hanno valore intero tranne quella dell'item critico $s$.
+
+\subsubsection*{Euristica A: caso peggiore}
+Funziona bene in media, ma esistono classi di istanze per cui si comporta malissimo. Con $n$ item:
+\begin{equation*}
+	\begin{aligned}
+		p_1=p, \quad & w_1=b\\
+		p_j=p-1, \quad & w_j=1\quad \rightarrow n-1 \textrm{ item}
+	\end{aligned}
+\end{equation*}
+\begin{equation*}
+	z^A=p\qquad z^*=(p-1)b
+\end{equation*}
+Per $b\to \infty$, $z^A$ si comporta infinitamente male: l'item con profitto maggiore viene selezionato per primo e occupa tutta la capacità, mentre selezionare tutti gli altri item avrebbe prodotto una soluzione molto migliore.
+
+\subsubsection*{Euristica C: caso peggiore}
+Anche l'euristica C può comportarsi infinitamente male. Istanza con $n$ item e $b=kn$:
+\begin{itemize}
+	\item un item con $w_{max}=b$, $p_{max}=b-1\quad \rightarrow \quad \frac{p_{max}}{w_{max}}<1$;
+	\item $n-1$ item con $w_j=1$, $p_j=1\quad \rightarrow \quad \frac{p_j}{w_j}=1$.
+\end{itemize}
+L'euristica seleziona gli $n-1$ item con profitto 1 e peso 1 (rapporto migliore), quindi $z^H=(n-1)\cdot 1=n-1$, mentre la soluzione ottima è $z^*=p_{max}=b-1=kn-1$:
+\begin{equation*}
+	\frac{z^*}{z^H}=\frac{kn-1}{n-1}=\frac{k(n-1)+k-1}{n-1}=k+\frac{k-1}{n-1}>k
+\end{equation*}
+Se $k\to \infty$, $z^*$ diventa infinitamente più grande di $z^H$.
+
+\subsubsection*{Euristica C: versione migliorata}
+Una semplice modifica permette di ottenere un \textbf{bound garantito} di $\frac{1}{2}$.
+
+Idea: se il profitto ottenuto dall'euristica C è inferiore a quello dell'item con profitto massimo, si seleziona solo l'item con profitto massimo:
+\begin{equation*}
+	z^{greedy}=\max\{z^C,p_{max}\}
+\end{equation*}
+Per semplificare la notazione indichiamo con $\overline{P}_s=\sum_{j=1}^{s-1}p_j$ il profitto degli item che precedono l'item critico. Osserviamo che:
+\begin{itemize}
+	\item $z^{greedy}\ge z^C$;
+	\item $z^{greedy}\le z^*\le z^{LP}$;
+	\item $z^{LP}=\sum_{j=1}^{s-1}p_j+\frac{b-\sum_{j=1}^{s-1}w_j}{w_s}p_s<\overline{P}_s+p_s$ (la frazione dell'item critico è $<1$);
+	\item $z^{greedy}\ge \overline{P}_s$ (perché $z^C$ include almeno gli stessi elementi di $\overline{P}_s$).
+\end{itemize}
+
+\textit{Dimostrazione}, per casi:
+\begin{itemize}
+	\item \textbf{Caso A}: $p_s\le \overline{P}_s$
+	\begin{equation*}
+		z^*<\overline{P}_s+p_s\le 2\overline{P}_s\le 2z^C\le 2z^{greedy}
+	\end{equation*}
+	quindi $z^{greedy}\ge \frac{1}{2}z^*$;
+	\item \textbf{Caso B}: $p_s>\overline{P}_s$
+	\begin{equation*}
+		z^*<\overline{P}_s+p_s<2p_s\le 2p_{max}\le 2z^{greedy}
+	\end{equation*}
+	quindi ancora $z^{greedy}\ge \frac{1}{2}z^*$.
+\end{itemize}
+In entrambi i casi:
+\begin{equation*}
+	z^{greedy}\ge \frac{1}{2}z^*\ge (1-\epsilon)z^*\quad \textrm{con } \epsilon=\frac{1}{2}
+\end{equation*}
+$\square$
